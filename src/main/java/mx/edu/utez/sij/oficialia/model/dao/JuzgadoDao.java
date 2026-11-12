@@ -18,7 +18,7 @@ public class JuzgadoDao implements Dao<Juzgado> {
         // ==========================================================
         // FUTURO SQL CON BASE DE DATOS:
         // List<Juzgado> list = new ArrayList<>();
-        // String sql = "SELECT clave, nombre, distrito, materia FROM juzgados ORDER BY clave ASC";
+        // String sql = "SELECT clave, nombre, distrito, materia FROM juzgados.jsp ORDER BY clave ASC";
         // try (Connection con = SQLConnector.getConnection();
         //      PreparedStatement ps = con.prepareStatement(sql);
         //      ResultSet rs = ps.executeQuery()) { ... }

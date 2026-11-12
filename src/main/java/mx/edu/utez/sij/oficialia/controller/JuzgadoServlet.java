@@ -12,7 +12,7 @@ import mx.edu.utez.sij.oficialia.model.dao.JuzgadoDao;
 import java.io.IOException;
 import java.util.List;
 
-@WebServlet(name = "JuzgadoServlet", value = "/juzgados")
+@WebServlet(name = "JuzgadoServlet", value = "/juzgados.jsp")
 public class JuzgadoServlet extends HttpServlet {
 
     private final JuzgadoDao juzgadoDao = new JuzgadoDao();
@@ -52,13 +52,13 @@ public class JuzgadoServlet extends HttpServlet {
             String distrito = request.getParameter("distrito");
 
             if (juzgadoDao.getById(clave) != null) {
-                response.sendRedirect(request.getContextPath() + "/juzgados?error=duplicado");
+                response.sendRedirect(request.getContextPath() + "/juzgados.jsp?error=duplicado");
                 return;
             }
 
             Juzgado juzgado = new Juzgado(clave, nombre, distrito, "Activo");
             juzgadoDao.save(juzgado);
-            response.sendRedirect(request.getContextPath() + "/juzgados?msg=creado");
+            response.sendRedirect(request.getContextPath() + "/juzgados.jsp?msg=creado");
 
         } else if ("toggle".equals(action)) {
             String clave = request.getParameter("clave");
@@ -67,7 +67,7 @@ public class JuzgadoServlet extends HttpServlet {
                 j.setEstado("Activo".equalsIgnoreCase(j.getEstado()) ? "Inactivo" : "Activo");
                 juzgadoDao.update(j);
             }
-            response.sendRedirect(request.getContextPath() + "/juzgados?msg=actualizado");
+            response.sendRedirect(request.getContextPath() + "/juzgados.jsp?msg=actualizado");
 
         } else if ("editar".equals(action)) {
             String clave = request.getParameter("clave");
@@ -82,14 +82,14 @@ public class JuzgadoServlet extends HttpServlet {
                 if (estado != null) j.setEstado(estado);
                 juzgadoDao.update(j);
             }
-            response.sendRedirect(request.getContextPath() + "/juzgados?msg=actualizado");
+            response.sendRedirect(request.getContextPath() + "/juzgados.jsp?msg=actualizado");
 
         } else if ("eliminar".equals(action)) {
             String clave = request.getParameter("clave");
             juzgadoDao.delete(clave);
-            response.sendRedirect(request.getContextPath() + "/juzgados?msg=eliminado");
+            response.sendRedirect(request.getContextPath() + "/juzgados.jsp?msg=eliminado");
         } else {
-            response.sendRedirect(request.getContextPath() + "/juzgados");
+            response.sendRedirect(request.getContextPath() + "/juzgados.jsp");
         }
     }
 }
