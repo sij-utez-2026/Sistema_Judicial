@@ -1,33 +1,71 @@
 package mx.edu.utez.sij.peritajes.model;
 
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
-/**
- * Perito del padrón (RF 3.1 – 3.4).
- *
- * TEMPORAL: por ahora se guarda en memoria (PeritoDaoMemoria). Con MySQL (PeritoDaoMySql):
- * - tabla per_perito; especialidades en per_perito_especialidad y materias en per_perito_materia
- *   (de materias solo el id, sin llave foránea a Oficialía),
- * - correo y numero_registro con UNIQUE.
- */
+// Perito del padrón (RF 3.1 – 3.4). Las anotaciones las revisa Validador (núcleo) en el registro y la edición.
+// Mensajes según los criterios de aceptación del DFR (RF 3.1 y 3.3).
 public class Perito {
 
     private Long id;
-    private String numeroRegistro;      // PER-0000, único y fijo
+
+    @NotBlank(message = "El número de registro es obligatorio")
+    @Pattern(regexp = "^(?i)PER-\\d{4}$", message = "El número de registro debe tener el formato PER-0000")
+    private String numeroRegistro;      // único y no se cambia
+
+    @NotBlank(message = "El nombre es obligatorio")
+    @Size(max = 80, message = "El nombre no debe pasar de 80 caracteres")
     private String nombre;
+
+    @NotBlank(message = "El apellido paterno es obligatorio")
+    @Size(max = 60, message = "El apellido paterno no debe pasar de 60 caracteres")
     private String apellidoPaterno;
+
+    @Size(max = 60, message = "El apellido materno no debe pasar de 60 caracteres")
     private String apellidoMaterno;     // opcional
-    private String correo;              // único y fijo
-    private String telefono;            // solo los 10 dígitos
-    // Especialidades en texto libre: área o estudios del perito (al menos una)
-    private Set<String> especialidades = new LinkedHashSet<>();
-    // Materias de intervención: solo los id (el catálogo es de Oficialía)
+
+    @NotBlank(message = "El correo institucional es obligatorio")
+    @Email(message = "El correo no tiene un formato válido")
+    @Size(max = 150, message = "El correo no debe pasar de 150 caracteres")
+    private String correo;              // único y no se cambia
+
+    // 10 dígitos; en el formulario se permiten espacios (777 000 0186), se guardan solo los dígitos
+    @NotBlank(message = "El teléfono de contacto es obligatorio")
+    @Pattern(regexp = "^\\s*(\\d\\s*){10}$", message = "El teléfono debe tener 10 dígitos")
+    private String telefono;
+
+    // Texto libre: área o estudios del perito (al menos una). Llegan como especialidades[0], especialidades[1]...
+    private List<String> especialidades = new ArrayList<>();
+
+    // Solo los id: el catálogo de materias es de Oficialía
+    @NotEmpty(message = "Seleccione al menos una materia para la asignación")
     private Set<Long> materiasIds = new LinkedHashSet<>();
+
     private boolean activo = true;
     private LocalDateTime creadoEn;
     private LocalDateTime actualizadoEn;
+
+    // Campos de solo lectura que llena PeritoDao para las pantallas
+    private String materiasTexto;       // "Civil · Familiar"
+    private long cargaAsignados;
+    private long cargaEnProceso;
+
+    // RF 3.1: "la especialidad es un campo obligatorio"
+    @AssertTrue(message = "La especialidad es un campo obligatorio: capture al menos una")
+    public boolean isEspecialidadCapturada() {
+        return especialidades != null
+                && especialidades.stream().anyMatch(e -> e != null && !e.isBlank());
+    }
 
     public String getNombreCompleto() {
         String completo = nombre + " " + apellidoPaterno;
@@ -37,12 +75,17 @@ public class Perito {
         return completo;
     }
 
-    /** Teléfono como se muestra en pantalla: 777 000 0186. */
+    // Como se muestra en pantalla: 777 000 0186
     public String getTelefonoFormateado() {
         if (telefono == null || telefono.length() != 10) {
             return telefono;
         }
         return telefono.substring(0, 3) + " " + telefono.substring(3, 6) + " " + telefono.substring(6);
+    }
+
+    // Carga activa: Asignados + En Proceso (regla de negocio 3 del DFR)
+    public long getCargaTotal() {
+        return cargaAsignados + cargaEnProceso;
     }
 
     public Long getId() {
@@ -101,11 +144,11 @@ public class Perito {
         this.telefono = telefono;
     }
 
-    public Set<String> getEspecialidades() {
+    public List<String> getEspecialidades() {
         return especialidades;
     }
 
-    public void setEspecialidades(Set<String> especialidades) {
+    public void setEspecialidades(List<String> especialidades) {
         this.especialidades = especialidades;
     }
 
@@ -139,5 +182,29 @@ public class Perito {
 
     public void setActualizadoEn(LocalDateTime actualizadoEn) {
         this.actualizadoEn = actualizadoEn;
+    }
+
+    public String getMateriasTexto() {
+        return materiasTexto;
+    }
+
+    public void setMateriasTexto(String materiasTexto) {
+        this.materiasTexto = materiasTexto;
+    }
+
+    public long getCargaAsignados() {
+        return cargaAsignados;
+    }
+
+    public void setCargaAsignados(long cargaAsignados) {
+        this.cargaAsignados = cargaAsignados;
+    }
+
+    public long getCargaEnProceso() {
+        return cargaEnProceso;
+    }
+
+    public void setCargaEnProceso(long cargaEnProceso) {
+        this.cargaEnProceso = cargaEnProceso;
     }
 }
