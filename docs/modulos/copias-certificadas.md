@@ -211,8 +211,12 @@ Los textos que ve el usuario son los del DFR 2.3: "En espera de validación", "A
 | GET / POST | `/copias/publico/solicitud/privada` | Formulario con datos e INE (2.2) |
 | GET | `/copias/publico/folio` | Consultar estado `?folio=` (2.3) |
 | GET | `/copias/publico/folio/{folio}/papeleta.pdf` | Papeleta (2.3) |
-| GET / POST | `/copias/publico/pago` | Pago simulado (4.1) |
-| GET | `/copias/publico/pago/{folioPago}/comprobante.pdf` | Comprobante |
+| GET | `/copias/publico/pago` | Consulta de folio y resumen para pago en línea (4.1) |
+| POST | `/copias/publico/pago/stripe` | Crea sesión de Stripe Checkout en `MXN` y redirige a `checkout.stripe.com` (4.1) |
+| GET | `/copias/publico/pago/retorno` | Verifica la sesión con Stripe (`?session_id=...`), registra el pago y redirige al comprobante (4.1) |
+| GET | `/copias/publico/pago/comprobante` | Comprobante imprimible (`?folioPago=` o `?folio=`) |
+
+> **Variables de entorno para Stripe (nunca escribir claves en código fuente):** `STRIPE_SECRET_KEY` (obligatoria para crear/verificar sesiones), `STRIPE_PUBLISHABLE_KEY` (opcional), `STRIPE_MONEDA` (`mxn` por omisión).
 
 ### Juzgado (con sesión)
 
