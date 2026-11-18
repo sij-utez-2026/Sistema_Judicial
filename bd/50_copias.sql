@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS cop_pago (
     stripe_session_id VARCHAR(255) NULL UNIQUE,
     stripe_payment_intent_id VARCHAR(255) NULL,
     estado_pago VARCHAR(30) NOT NULL DEFAULT 'PAGADO',
+    metodo_pago VARCHAR(80) NOT NULL DEFAULT 'Stripe Checkout (Tarjeta)',
     fecha DATETIME NOT NULL,
     simulado BOOLEAN NOT NULL DEFAULT FALSE,
     CONSTRAINT fk_cop_pago_solicitud FOREIGN KEY (solicitud_id) REFERENCES cop_solicitud(id)

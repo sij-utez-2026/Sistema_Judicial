@@ -2,6 +2,7 @@ package mx.edu.utez.sij.copias.stripe;
 
 import mx.edu.utez.sij.copias.service.ReglaNegocioException;
 
+import java.net.URI;
 import java.util.Locale;
 import java.util.function.Function;
 
@@ -79,7 +80,7 @@ public class StripeConfig {
         if (valor == null || valor.isBlank()) {
             return API_BASE_POR_OMISION;
         }
-        return quitarBarraFinal(valor.trim());
+        return validarUrlHttp(quitarBarraFinal(valor.trim()), VAR_API_BASE_URL);
     }
 
     public String obtenerAppBaseUrl() {
@@ -87,7 +88,21 @@ public class StripeConfig {
         if (valor == null || valor.isBlank()) {
             return null;
         }
-        return quitarBarraFinal(valor.trim());
+        return validarUrlHttp(quitarBarraFinal(valor.trim()), VAR_APP_BASE_URL);
+    }
+
+    private static String validarUrlHttp(String url, String nombreVariable) {
+        try {
+            URI uri = URI.create(url);
+            String esquema = uri.getScheme();
+            if ((!"http".equalsIgnoreCase(esquema) && !"https".equalsIgnoreCase(esquema))
+                    || uri.getHost() == null || uri.getHost().isBlank()) {
+                throw new ReglaNegocioException("La variable " + nombreVariable + " debe ser una URL http/https válida.");
+            }
+            return url;
+        } catch (IllegalArgumentException e) {
+            throw new ReglaNegocioException("La variable " + nombreVariable + " no tiene un formato de URL válido.");
+        }
     }
 
     private static String quitarBarraFinal(String url) {

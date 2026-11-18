@@ -13,6 +13,7 @@
     <jsp:body>
         <div class="cop-no-imprimir">
             <n:migas>
+                <a href="<c:url value='/copias'/>">Copias Certificadas</a> /
                 <a href="<c:url value='/copias/publico/pago'/>">Pago en línea</a> / Comprobante
             </n:migas>
 

@@ -49,4 +49,22 @@ class StripeConfigTest {
 
         assertThrows(ReglaNegocioException.class, config::obtenerMoneda);
     }
+
+    @Test
+    void rechazaUrlsSinEsquemaHttpOHostValido() {
+        StripeConfig apiInvalida = new StripeConfig(Map.of(
+                StripeConfig.VAR_API_BASE_URL, "api.stripe.com"
+        )::get);
+        assertThrows(ReglaNegocioException.class, apiInvalida::obtenerApiBaseUrl);
+
+        StripeConfig appInvalida = new StripeConfig(Map.of(
+                StripeConfig.VAR_APP_BASE_URL, "ftp://localhost:8080/sij"
+        )::get);
+        assertThrows(ReglaNegocioException.class, appInvalida::obtenerAppBaseUrl);
+
+        StripeConfig appValida = new StripeConfig(Map.of(
+                StripeConfig.VAR_APP_BASE_URL, "http://localhost:8080/sij/"
+        )::get);
+        assertEquals("http://localhost:8080/sij", appValida.obtenerAppBaseUrl());
+    }
 }

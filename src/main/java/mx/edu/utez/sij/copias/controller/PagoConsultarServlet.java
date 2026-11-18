@@ -24,6 +24,7 @@ public class PagoConsultarServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String folioCrudo = Parametros.crudo(request, "folio");
         String folio = Parametros.texto(request, "folio");
         String cancelado = Parametros.texto(request, "cancelado");
 
@@ -35,7 +36,9 @@ public class PagoConsultarServlet extends HttpServlet {
         request.setAttribute("stripeConfigurado", Copias.stripeConfig().estaConfigurada());
         request.setAttribute("solicitudesDemo", pagoService.listarSolicitudes());
 
-        if (folio != null) {
+        if (folioCrudo != null && folio == null) {
+            request.setAttribute("error", "Ingrese un folio de solicitud válido.");
+        } else if (folio != null) {
             Optional<SolicitudCopia> solicitudOpt = pagoService.buscarSolicitudPorFolio(folio);
             if (solicitudOpt.isEmpty()) {
                 request.setAttribute("error", "No se encontraron registros con ese folio.");

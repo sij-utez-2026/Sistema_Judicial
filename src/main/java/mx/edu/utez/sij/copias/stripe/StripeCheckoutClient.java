@@ -42,6 +42,16 @@ public class StripeCheckoutClient {
         }
         String secretKey = config.obtenerSecretKey();
         String moneda = config.obtenerMoneda();
+        if (!StripeConfig.MONEDA_POR_OMISION.equalsIgnoreCase(moneda)) {
+            throw new ReglaNegocioException("La moneda configurada (" + moneda + ") no corresponde a MXN.");
+        }
+
+        String descripcion = solicitud.getNumeroExpediente() != null && !solicitud.getNumeroExpediente().isBlank()
+                ? "Expediente " + solicitud.getNumeroExpediente()
+                : "Solicitud de copias certificadas";
+        if (solicitud.getJuzgadoNombre() != null && !solicitud.getJuzgadoNombre().isBlank()) {
+            descripcion += " · " + solicitud.getJuzgadoNombre();
+        }
 
         Map<String, String> formulario = new LinkedHashMap<>();
         formulario.put("mode", "payment");
@@ -50,9 +60,7 @@ public class StripeCheckoutClient {
         formulario.put("line_items[0][price_data][unit_amount]", String.valueOf(solicitud.getCostoCentavos()));
         formulario.put("line_items[0][price_data][product_data][name]",
                 "Copias certificadas · Folio " + solicitud.getFolioSolicitud());
-        formulario.put("line_items[0][price_data][product_data][description]",
-                "Expediente " + solicitud.getNumeroExpediente()
-                        + (solicitud.getJuzgadoNombre() != null ? " · " + solicitud.getJuzgadoNombre() : ""));
+        formulario.put("line_items[0][price_data][product_data][description]", descripcion);
         formulario.put("line_items[0][quantity]", "1");
         formulario.put("client_reference_id", solicitud.getFolioSolicitud());
         formulario.put("metadata[folio_solicitud]", solicitud.getFolioSolicitud());

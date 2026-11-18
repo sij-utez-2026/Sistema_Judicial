@@ -87,9 +87,11 @@
                     </div>
 
                     <c:choose>
-                        <c:when test="${not empty pagoExistente}">
-                            <a class="btn btn-primary"
-                               href="<c:url value='/copias/publico/pago/comprobante?folioPago=${pagoExistente.folioPago}'/>">
+                        <c:when test="${not empty pagoExistente and solicitud.estado.name() ne 'ENTREGADO'}">
+                            <c:url var="urlComprobante" value="/copias/publico/pago/comprobante">
+                                <c:param name="folioPago" value="${pagoExistente.folioPago}"/>
+                            </c:url>
+                            <a class="btn btn-primary" href="<c:out value='${urlComprobante}'/>">
                                 Ver comprobante de pago
                             </a>
                         </c:when>
@@ -103,7 +105,7 @@
                     </c:choose>
                 </div>
 
-                <c:if test="${not empty motivoNoPagable and empty pagoExistente}">
+                <c:if test="${not empty motivoNoPagable and (empty pagoExistente or solicitud.estado.name() eq 'ENTREGADO')}">
                     <div class="sij-aviso sij-aviso-advertencia p-3 mt-3">
                         <c:out value="${motivoNoPagable}"/>
                     </div>
@@ -141,8 +143,10 @@
                                 <td><n:estado valor="${s.estado.etiqueta}"/></td>
                                 <td><c:out value="${s.costoFormateado}"/></td>
                                 <td class="text-end">
-                                    <a class="btn btn-sm btn-sij-secundario"
-                                       href="<c:url value='/copias/publico/pago?folio=${s.folioSolicitud}'/>">
+                                    <c:url var="urlSeleccionar" value="/copias/publico/pago">
+                                        <c:param name="folio" value="${s.folioSolicitud}"/>
+                                    </c:url>
+                                    <a class="btn btn-sm btn-sij-secundario" href="<c:out value='${urlSeleccionar}'/>">
                                         Seleccionar
                                     </a>
                                 </td>

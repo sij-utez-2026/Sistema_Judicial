@@ -191,5 +191,26 @@ class PagoServiceTest {
 
         assertThrows(ReglaNegocioException.class,
                 () -> pagoService.obtenerComprobante("PAG-2026-ENT999", null));
+        assertNotNull(pagoService.motivoNoPagable(entregada));
+        assertTrue(pagoService.motivoNoPagable(entregada).contains("entregada"));
+    }
+
+    @Test
+    void rechazaSegundaSesionParaMismaSolicitudYaPagada() {
+        pagoService.confirmarPagoStripe("cs_test_pago_ok_1");
+
+        respuestaConsultaStripe.set("""
+                {
+                  "id": "cs_test_otra_sesion_2",
+                  "status": "complete",
+                  "payment_status": "paid",
+                  "currency": "mxn",
+                  "amount_total": 15000,
+                  "payment_intent": "pi_test_otro_2",
+                  "client_reference_id": "CC-2026-A7K9M2"
+                }
+                """);
+
+        assertThrows(ReglaNegocioException.class, () -> pagoService.confirmarPagoStripe("cs_test_otra_sesion_2"));
     }
 }

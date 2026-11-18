@@ -137,4 +137,32 @@ class StripeCheckoutClientTest {
                 () -> cliente.crearSesion(solicitud, "http://localhost/ok", "http://localhost/cancel"));
         assertTrue(ex.getMessage().contains("Invalid currency specified"));
     }
+
+    @Test
+    void rechazaMonedaDistintaAMxnAntesDeLlamarAStripe() {
+        AtomicReference<Boolean> llamoApi = new AtomicReference<>(false);
+        servidor.createContext("/v1/checkout/sessions", exchange -> {
+            llamoApi.set(true);
+            exchange.sendResponseHeaders(500, -1);
+            exchange.close();
+        });
+
+        StripeConfig config = new StripeConfig(Map.of(
+                StripeConfig.VAR_SECRET_KEY, "sk_test_clave_en_variable",
+                StripeConfig.VAR_MONEDA, "usd",
+                StripeConfig.VAR_API_BASE_URL, baseUrl
+        )::get);
+        StripeCheckoutClient cliente = new StripeCheckoutClient(config);
+
+        SolicitudCopia solicitud = new SolicitudCopia(
+                1L, "CC-2026-A7K9M2", "EXP-2026-00104",
+                1L, "Juzgado Primero Civil", 1L, "Civil",
+                TipoDemanda.PUBLICA, EstadoSolicitud.LISTO_PARA_PAGO,
+                new BigDecimal("150.00"), LocalDateTime.now());
+
+        ReglaNegocioException ex = assertThrows(ReglaNegocioException.class,
+                () -> cliente.crearSesion(solicitud, "http://localhost/ok", "http://localhost/cancel"));
+        assertTrue(ex.getMessage().contains("MXN"));
+        assertEquals(false, llamoApi.get());
+    }
 }
