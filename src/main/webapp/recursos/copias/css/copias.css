@@ -1,0 +1,36 @@
+/* Estilos propios del módulo de Copias Certificadas (prefijo cop-) */
+.cop-monto-destacado {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--sij-primario);
+    line-height: 1.2;
+}
+
+.cop-referencia {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: .8rem;
+    word-break: break-all;
+}
+
+@media print {
+    .sij-topbar-publico,
+    .sij-pie,
+    .cop-no-imprimir,
+    .toast-container {
+        display: none !important;
+    }
+
+    body.sij-body {
+        background: #fff !important;
+    }
+
+    .sij-main-publico {
+        max-width: 100% !important;
+        padding: 0 !important;
+    }
+
+    .cop-comprobante {
+        border: 1px solid #ccc !important;
+        box-shadow: none !important;
+    }
+}

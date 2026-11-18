@@ -3,13 +3,14 @@
 <%@ taglib prefix="t" tagdir="/WEB-INF/tags" %>
 <%@ taglib prefix="n" tagdir="/WEB-INF/tags/nucleo" %>
 <%--
-  Inicio del módulo (/copias). EQUIPO 5: es la página de ejemplo para copiar.
-  Toda pantalla del módulo empieza igual: <t:layout modulo="copias" seccion="...">, <n:migas> y <n:encabezado>.
-  Guía completa: docs/FRONT_END.md
+  Inicio del módulo (/copias). EQUIPO 5.
+  Mantiene la pantalla institucional intacta y enlaza al portal público de pago con Stripe Checkout.
 --%>
 <t:layout titulo="Inicio" modulo="copias" seccion="inicio">
     <n:migas>Inicio</n:migas>
-    <n:encabezado titulo="${moduloActual.nombre}" descripcion="${moduloActual.descripcion}"/>
+    <n:encabezado titulo="${moduloActual.nombre}" descripcion="${moduloActual.descripcion}">
+        <a class="btn btn-primary" href="<c:url value='/copias/publico/pago'/>">Ir al pago de copias</a>
+    </n:encabezado>
 
     <n:tarjeta titulo="Pantalla de inicio de ejemplo" clase="mt-3">
         <p class="sij-descripcion">
@@ -18,5 +19,12 @@
             <code>src/main/webapp/WEB-INF/jsp/copias/menu.jsp</code>.
         </p>
         <n:estado valor="Pendiente"/>
+    </n:tarjeta>
+
+    <n:tarjeta titulo="Pago en línea (Stripe Checkout · MXN)" clase="mt-3">
+        <p class="sij-descripcion mb-3">
+            Consulte un folio de solicitud autorizado y realice el cobro en moneda MXN mediante la pantalla oficial de Stripe Checkout.
+        </p>
+        <a class="btn btn-primary" href="<c:url value='/copias/publico/pago'/>">Abrir portal de pago</a>
     </n:tarjeta>
 </t:layout>

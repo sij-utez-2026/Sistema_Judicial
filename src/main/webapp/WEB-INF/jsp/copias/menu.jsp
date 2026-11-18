@@ -7,6 +7,7 @@
   - TODO: cuando el núcleo tenga login, mostrar cada opción solo a los roles de la tabla de roles del DFR.
 --%>
 <n:menu-item clave="inicio" url="/copias" texto="Inicio" icono="inicio"/>
+<n:menu-item clave="pago" url="/copias/publico/pago" texto="Pago en línea (Stripe)" icono="documento"/>
 <n:menu-item clave="validacion" texto="Validación de solicitudes" icono="documento"/>
 <n:menu-item clave="entregas" texto="Entregas" icono="carpeta"/>
 <n:menu-item clave="solicitudes" texto="Consulta de solicitudes" icono="buscar"/>
