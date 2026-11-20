@@ -4,6 +4,7 @@ import mx.edu.utez.sij.copias.dao.ColorAreaDaoMemoria;
 import mx.edu.utez.sij.copias.dao.CorreoEnviadoDaoMemoria;
 import mx.edu.utez.sij.copias.dao.EntregaDaoMemoria;
 import mx.edu.utez.sij.copias.dao.HistorialSolicitudDaoMemoria;
+import mx.edu.utez.sij.copias.dao.PagoDaoMemoria;
 import mx.edu.utez.sij.copias.dao.SolicitudCopiaDaoMemoria;
 import mx.edu.utez.sij.copias.dao.TarifaDaoMemoria;
 import mx.edu.utez.sij.copias.dto.ArchivoSubido;
@@ -57,6 +58,8 @@ class CopiasPrueba {
     final ValidacionService validacionService = new ValidacionService(solicitudes, solicitudService,
             historialService, expedienteApi, archivoService);
     final CorreoCopiasService correoService = new CorreoCopiasService(correo, correos);
+    final PagoDaoMemoria pagos = new PagoDaoMemoria();
+    final PagoService pagoService = new PagoService(pagos, solicitudService, historialService, correoService);
     final EntregaService entregaService = new EntregaService(new EntregaDaoMemoria(), solicitudes,
             solicitudService, historialService, correoService);
     final PersonalCopiasService personalService = new PersonalCopiasService(new UsuarioServiceTemporal());

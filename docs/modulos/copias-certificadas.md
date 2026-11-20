@@ -184,21 +184,14 @@ stateDiagram-v2
 - **Apoyo para validar:** junto a los datos y la INE se muestran las partes del expediente; se marca la parte cuyo RFC coincide con el del solicitante.
 - **Aprobar** → `APROBADO` (se habilita el pago). **Rechazar** → `CANCELADO` con **motivo obligatorio** (máx. 500) [Propuesta]; bloquea el pago para siempre.
 
-### 6.4 Pago simulado (4.1) — parte de pagos [Pendiente]
-
-> La parte de pagos (pago, comprobante y su correo) la hace otro integrante del equipo en su propio PR. Aquí quedan las reglas acordadas para que se conecte con lo demás:
-> - usar `SolicitudCopia` y `EstadoSolicitud` de este módulo (no crear otras);
-> - `EstadoSolicitud.sePuedePagar()` dice si se puede pagar; al pagar, cambiar el estado con `HistorialService.cambiarEstado(..., PAGADO_EN_PREPARACION, ...)`;
-> - enviar el comprobante con `CorreoCopiasService.enviar(..., TipoCorreo.COMPROBANTE, ...)`;
-> - agregar `cop_pago` a `bd/50_copias.sql` y su botón en `solicitudes/detalle.jsp` (donde dice `TODO pagos`);
-> - **pago simulado** y **sin portal ciudadano**: lo registra el trabajador (`COPIAS_PERSONAL`).
+### 6.4 Pago simulado (4.1) — `PagoService`
 
 1. Solo `LISTO_PARA_PAGO` o `APROBADO`. Si está en espera: "Debe esperar la aprobación antes de pagar". Si está cancelada: "La solicitud fue cancelada y no se puede pagar".
 2. Resumen con la leyenda "Pago simulado — no se realiza ningún cargo".
 3. Al confirmar se crea `cop_pago` con folio `CP-AAAA-XXXXXX`, el estado pasa a `PAGADO_EN_PREPARACION` y **el comprobante se envía por correo**.
 4. **Sin pagos dobles:** `cop_pago.solicitud_id` es único.
 
-### 6.5 Comprobante — parte de pagos [Pendiente]
+### 6.5 Comprobante — `PagoComprobanteServlet`
 - Se imprime (al imprimir solo sale el comprobante) y se puede **reenviar por correo**.
 - **Datos esenciales:** folio del comprobante y de la solicitud, expediente, juzgado, materia, nombre, RFC y correo del solicitante, fecha, importe, estado y la leyenda de pago simulado.
 - **Nunca** la INE, las partes ni los documentos del expediente.
@@ -256,7 +249,9 @@ Ya no se necesita `CatalogoJudicialApi`: el juzgado y la materia vienen del expe
 | GET | `/copias/validacion/detalle?id=` | PERSONAL | Datos, INE y partes del expediente |
 | GET | `/copias/validacion/ine?id=` | PERSONAL | La INE (inline) |
 | POST | `/copias/validacion/aprobar` · `/copias/validacion/rechazar` | PERSONAL | Visto bueno (`id`; rechazar con `motivo`) |
-| — | Pago y comprobante | PERSONAL | Parte de pagos [Pendiente] |
+| GET / POST | `/copias/pagos/registrar` | PERSONAL | Pago simulado estilo checkout con tarjeta (`id`) |
+| GET | `/copias/pagos/comprobante` | PERSONAL | Comprobante imprimible (`id`) |
+| POST | `/copias/pagos/reenviar` | PERSONAL | Reenviar el comprobante por correo (`id`) |
 | GET | `/copias/entregas` | PERSONAL | Pagadas pendientes de entrega |
 | POST | `/copias/entregas/avisar` | PERSONAL | Correo "lista para recoger" (`id`, `volver`) |
 | POST | `/copias/entregas/entregar` | PERSONAL | Registrar la entrega (`id`, `volver`) |
@@ -276,14 +271,14 @@ src/main/java/mx/edu/utez/sij/copias/
 ├── Copias.java          arma los DAO y services (una sola instancia de cada uno)
 ├── ArranqueCopias.java  @WebListener: carga DatosInicialesCopias al iniciar
 ├── RolesCopias.java     COPIAS_PERSONAL y COPIAS_ADMIN
-├── controller/   TRABAJADOR: un servlet por pantalla o acción (Inicio, Solicitud*, Validacion*, Entrega*)
+├── controller/   TRABAJADOR: un servlet por pantalla o acción (Inicio, Solicitud*, Validacion*, Pago*, Entrega*)
 │   │             FiltroCopias (@WebFilter: colores y menú por rol en todas las vistas)
 │   └── admin/    ADMINISTRADOR: AdminInicioServlet, TrabajadoresServlet, TrabajadorEstadoServlet,
 │                 ColoresServlet, ColoresRestablecerServlet
-├── service/      SolicitudCopiaService, ValidacionService, EntregaService, CorreoCopiasService, HistorialService,
+├── service/      SolicitudCopiaService, ValidacionService, PagoService, EntregaService, CorreoCopiasService, HistorialService,
 │                 FolioService, TarifaService, PersonalCopiasService, ColoresCopiasService
 ├── dao/          interfaces ...Dao (con su SQL en comentarios) y ...DaoMemoria (TEMPORAL)
-├── model/        SolicitudCopia, Entrega, HistorialSolicitud, CorreoEnviado, Tarifa, ColorArea,
+├── model/        SolicitudCopia, Pago, Entrega, HistorialSolicitud, CorreoEnviado, Tarifa, ColorArea,
 │                 EstadoSolicitud, TipoCorreo, Formatos
 ├── dto/          SolicitudForm, PersonalForm, ColoresForm, ArchivoSubido
 ├── temporal/     TEMPORAL: lo que darán el núcleo y Oficialía (ExpedienteApi, archivos, correo, sesión, usuarios)
@@ -291,12 +286,12 @@ src/main/java/mx/edu/utez/sij/copias/
 ├── sesion/       SesionCopias (quién usa Copias) y UsuarioCopias (id, nombre, rol, si viene de Oficialía)
 └── DatosInicialesCopias.java
 
-src/main/webapp/WEB-INF/jsp/copias/   TRABAJADOR: inicio, solicitudes/, validacion/, entregas/
+src/main/webapp/WEB-INF/jsp/copias/   TRABAJADOR: inicio, solicitudes/, validacion/, pagos/, entregas/
                                       ADMINISTRADOR: admin/ (inicio, personal, colores)
                                       menu.jsp (un menú por rol)
 src/main/webapp/WEB-INF/tags/copias/  estilos.tag (CSS de Copias + colores del área)
 src/main/webapp/recursos/copias/      css/copias.css, js/copias.js
-bd/50_copias.sql                      tablas cop_* (cop_pago la agrega la parte de pagos)
+bd/50_copias.sql                      tablas cop_* (incluye cop_pago)
 src/test/java/mx/edu/utez/sij/copias/ pruebas de los services y del modo de prueba
 ```
 
