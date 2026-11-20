@@ -23,15 +23,14 @@
                 </c:when>
                 <c:when test="${estado eq 'APROBADO' or estado eq 'LISTO_PARA_PAGO'}">
                     <span>La solicitud está lista para el pago.</span>
-                    <%-- TODO pagos: aquí va el botón "Ir al pago" con la ruta del pago simulado (parte de pagos del equipo) --%>
-                    <button type="button" class="btn btn-primary btn-sm" disabled title="La parte de pagos está pendiente">Ir al pago (pendiente)</button>
+                    <a class="btn btn-primary btn-sm" href="<c:url value='/copias/pagos/registrar?id=${solicitud.id}'/>">Ir al pago</a>
                 </c:when>
                 <c:when test="${estado eq 'PAGADO_EN_PREPARACION' or estado eq 'LISTO_PARA_RECOGER'}">
                     <span>
                         <c:out value="${estado eq 'LISTO_PARA_RECOGER' ? 'Ya se avisó al solicitante. Falta entregar la copia.' : 'Pagada. La copia está en preparación.'}"/>
                     </span>
                     <span class="d-flex flex-wrap gap-2">
-                        <%-- TODO pagos: aquí va el enlace "Ver comprobante" (parte de pagos del equipo) --%>
+                        <a class="btn btn-sij-secundario btn-sm" href="<c:url value='/copias/pagos/comprobante?id=${solicitud.id}'/>">Ver comprobante</a>
                         <n:confirmar accion="/copias/entregas/avisar"
                                      texto="¿Enviar a ${solicitud.solicitanteCorreo} el aviso de que su copia está lista para recoger?"
                                      boton="Avisar que está lista" clase="btn btn-sij-secundario btn-sm">

@@ -35,4 +35,33 @@
             }
         });
     });
+
+    // Formato visual de tarjeta simulada (estilo Stripe Checkout, sin cobro real)
+    var numTarjeta = document.getElementById('numeroTarjeta');
+    var vencTarjeta = document.getElementById('vencimientoTarjeta');
+    var cvcTarjeta = document.getElementById('cvcTarjeta');
+    if (numTarjeta) {
+        numTarjeta.addEventListener('input', function () {
+            var digitos = numTarjeta.value.replace(/\D/g, '').slice(0, 16);
+            numTarjeta.value = digitos.replace(/(.{4})/g, '$1 ').trim();
+        });
+    }
+    if (vencTarjeta) {
+        vencTarjeta.addEventListener('input', function () {
+            var digitos = vencTarjeta.value.replace(/\D/g, '').slice(0, 4);
+            vencTarjeta.value = digitos.length > 2 ? digitos.slice(0, 2) + '/' + digitos.slice(2) : digitos;
+        });
+    }
+    if (cvcTarjeta) {
+        cvcTarjeta.addEventListener('input', function () {
+            cvcTarjeta.value = cvcTarjeta.value.replace(/\D/g, '').slice(0, 4);
+        });
+    }
+    document.querySelectorAll('[data-tarjeta-prueba]').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            if (numTarjeta) numTarjeta.value = '4242 4242 4242 4242';
+            if (vencTarjeta) vencTarjeta.value = '12/28';
+            if (cvcTarjeta) cvcTarjeta.value = '424';
+        });
+    });
 })();

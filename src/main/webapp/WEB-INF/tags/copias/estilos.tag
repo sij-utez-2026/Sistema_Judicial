@@ -10,7 +10,7 @@
      Los valores ya vienen validados como #RRGGBB desde ColoresCopiasService.
 --%>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
-<link rel="stylesheet" href="<c:url value='/recursos/copias/css/copias.css'/>">
+<link rel="stylesheet" href="<c:url value='/recursos/copias/css/copias.css?v=2'/>">
 <c:if test="${not empty coloresCopias}">
     <style>
         :root {

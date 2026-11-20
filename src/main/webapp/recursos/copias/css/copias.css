@@ -202,6 +202,126 @@
     border-bottom: 3px solid var(--sij-acento);
 }
 
+/* Pasarela simulada estilo Stripe Checkout (sin cargos ni conexiones externas) */
+.cop-checkout {
+    background: #fff;
+    border: 1px solid var(--sij-borde);
+    border-radius: .75rem;
+    overflow: hidden;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, .06);
+}
+
+.cop-checkout-resumen {
+    background: color-mix(in srgb, var(--sij-fondo) 75%, white);
+    border-right: 1px solid var(--sij-borde);
+}
+
+.cop-checkout-marca {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-weight: 600;
+    color: var(--cop-titulos);
+}
+
+.cop-checkout-punto {
+    width: .65rem;
+    height: .65rem;
+    border-radius: 50%;
+    background: #635BFF;
+    display: inline-block;
+}
+
+.cop-badge-prueba {
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    padding: .15rem .45rem;
+    border-radius: 999px;
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+.cop-checkout-total {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--cop-titulos);
+    line-height: 1.1;
+}
+
+.cop-checkout-total span {
+    font-size: .9rem;
+    font-weight: 600;
+    color: var(--sij-texto-suave);
+}
+
+.cop-checkout-concepto {
+    background: #fff;
+    border: 1px solid var(--sij-borde);
+    border-radius: .5rem;
+}
+
+.cop-red-tarjeta {
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    padding: .15rem .45rem;
+    border-radius: .25rem;
+    border: 1px solid #d1d5db;
+    color: #374151;
+    background: #f9fafb;
+}
+
+.cop-grupo-tarjeta {
+    border: 1px solid #d1d5db;
+    border-radius: .5rem;
+    overflow: hidden;
+    background: #fff;
+}
+
+.cop-grupo-tarjeta:focus-within {
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, .15);
+}
+
+.cop-input-checkout:focus {
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, .15);
+}
+
+.cop-btn-stripe {
+    --bs-btn-bg: #635BFF;
+    --bs-btn-border-color: #635BFF;
+    --bs-btn-color: #fff;
+    --bs-btn-hover-bg: #5147e5;
+    --bs-btn-hover-border-color: #5147e5;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-active-bg: #463cd4;
+    --bs-btn-active-border-color: #463cd4;
+    --bs-btn-active-color: #fff;
+    background: #635BFF;
+    border-color: #635BFF;
+    color: #fff;
+    font-weight: 600;
+    border-radius: .5rem;
+    padding: .75rem 1.25rem;
+}
+
+.cop-btn-stripe:hover,
+.cop-btn-stripe:focus {
+    background: #5147e5;
+    border-color: #5147e5;
+    color: #fff;
+}
+
+@media (max-width: 991.98px) {
+    .cop-checkout-resumen {
+        border-right: 0;
+        border-bottom: 1px solid var(--sij-borde);
+    }
+}
+
 @media print {
     .sij-sidebar,
     .sij-topbar,
