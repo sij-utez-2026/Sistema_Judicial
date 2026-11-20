@@ -6,7 +6,7 @@
 <%-- RF 4.1 Comprobante imprimible del pago simulado (sin INE ni partes del expediente) --%>
 <t:layout titulo="Comprobante ${pago.folioPago}" modulo="copias" seccion="solicitudes">
     <jsp:attribute name="estilos"><cop:estilos/></jsp:attribute>
-    <jsp:attribute name="scripts"><script src="<c:url value='/recursos/copias/js/copias.js?v=2'/>"></script></jsp:attribute>
+    <jsp:attribute name="scripts"><script src="<c:url value='/recursos/copias/js/copias.js?v=3'/>"></script></jsp:attribute>
     <jsp:body>
         <div class="cop-no-imprimir">
             <n:migas>
