@@ -1,81 +1,104 @@
 package mx.edu.utez.sij.copias;
 
-import mx.edu.utez.sij.copias.dao.PagoDao;
-import mx.edu.utez.sij.copias.dao.SolicitudDao;
+import mx.edu.utez.sij.copias.dto.PersonalForm;
+import mx.edu.utez.sij.copias.dto.SolicitudForm;
 import mx.edu.utez.sij.copias.model.EstadoSolicitud;
-import mx.edu.utez.sij.copias.model.Pago;
 import mx.edu.utez.sij.copias.model.SolicitudCopia;
-import mx.edu.utez.sij.copias.model.TipoDemanda;
+import mx.edu.utez.sij.copias.service.EntregaService;
+import mx.edu.utez.sij.copias.service.HistorialService;
+import mx.edu.utez.sij.copias.service.PersonalCopiasService;
+import mx.edu.utez.sij.copias.service.SolicitudCopiaService;
+import mx.edu.utez.sij.copias.service.TarifaService;
+import mx.edu.utez.sij.copias.temporal.UsuarioServiceTemporal;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.LocalDate;
 
 /**
- * Datos de prueba iniciales para probar el flujo de pago en línea (RF 4.1)
- * mientras se integran las pantallas de captura y validación.
+ * Datos de prueba del módulo (docs/ARQUITECTURA.md, sección 11). Solo se cargan si no hay tarifas.
+ * Nombres ficticios y correos de example.com (dominio reservado para pruebas).
+ * Se usan los services para que pasen por las mismas reglas que una captura normal.
+ *
+ * Usuarios (TEMPORAL, mientras no hay login; se eligen en el "Modo de prueba" del menú):
+ * - Equipo 5: un administrador de Copias y dos trabajadores.
+ * - Oficialía (simulados): admin_op → entra como administrador; usuario_op → entra como trabajador.
+ *   Sirven para probar que Copias funciona como sección de Oficialía. Con el login del núcleo,
+ *   estos usuarios serán las cuentas reales de Oficialía y se borran de aquí.
+ *
+ * Mientras no está la parte de pagos, dos solicitudes se marcan como pagadas directamente
+ * para que Entregas tenga datos (TEMPORAL).
  */
 public class DatosInicialesCopias {
 
-    private static final ZoneId ZONA = ZoneId.of("America/Mexico_City");
+    private final TarifaService tarifaService;
+    private final UsuarioServiceTemporal usuarios;
+    private final PersonalCopiasService personalService;
+    private final SolicitudCopiaService solicitudService;
+    private final HistorialService historialService;
+    private final EntregaService entregaService;
 
-    private final SolicitudDao solicitudDao;
-    private final PagoDao pagoDao;
-
-    public DatosInicialesCopias(SolicitudDao solicitudDao, PagoDao pagoDao) {
-        this.solicitudDao = solicitudDao;
-        this.pagoDao = pagoDao;
+    public DatosInicialesCopias(TarifaService tarifaService, UsuarioServiceTemporal usuarios,
+                                PersonalCopiasService personalService, SolicitudCopiaService solicitudService,
+                                HistorialService historialService, EntregaService entregaService) {
+        this.tarifaService = tarifaService;
+        this.usuarios = usuarios;
+        this.personalService = personalService;
+        this.solicitudService = solicitudService;
+        this.historialService = historialService;
+        this.entregaService = entregaService;
     }
 
     public void cargar() {
-        if (solicitudDao.contar() > 0) {
+        if (tarifaService.total() > 0) {
             return;
         }
-        LocalDateTime ahora = LocalDateTime.now(ZONA);
 
-        solicitudDao.guardar(new SolicitudCopia(
-                null, "CC-2026-A7K9M2", "EXP-2026-00104",
-                1L, "Juzgado Primero Civil", 1L, "Civil",
-                TipoDemanda.PUBLICA, EstadoSolicitud.LISTO_PARA_PAGO,
-                new BigDecimal("150.00"), ahora.minusHours(3)));
+        // Usuarios del Equipo 5
+        Long admin = usuarios.crear("Ana Sofía Paredes Gil", "admin.copias@example.com", RolesCopias.ADMIN).getId();
+        Long trabajador = trabajador("María Fernanda López Díaz", "personal1@example.com");
+        trabajador("Carlos Alberto Núñez Vela", "personal2@example.com");
 
-        solicitudDao.guardar(new SolicitudCopia(
-                null, "CC-2026-B3P8Q5", "EXP-2026-00219",
-                2L, "Juzgado Segundo Familiar", 2L, "Familiar",
-                TipoDemanda.PRIVADA, EstadoSolicitud.APROBADO,
-                new BigDecimal("250.00"), ahora.minusDays(1)));
+        // Usuarios de Oficialía de Partes (simulados)
+        usuarios.crear("Admin de usuarios de OP (prueba)", "admin.op@example.com", RolesCopias.OFICIALIA_ADMIN);
+        usuarios.crear("Usuario de OP (prueba)", "usuario.op@example.com", RolesCopias.OFICIALIA_USUARIO);
 
-        solicitudDao.guardar(new SolicitudCopia(
-                null, "CC-2026-C9W4R1", "EXP-2026-00308",
-                3L, "Juzgado Primero Mercantil", 3L, "Mercantil",
-                TipoDemanda.PRIVADA, EstadoSolicitud.EN_ESPERA_VALIDACION,
-                new BigDecimal("180.00"), ahora.minusHours(5)));
+        // Pendiente 17: tarifa fija de prueba
+        tarifaService.registrar(new BigDecimal("320.00"), LocalDate.of(2026, 1, 1), admin);
 
-        solicitudDao.guardar(new SolicitudCopia(
-                null, "CC-2026-D2N6T8", "EXP-2026-00087",
-                4L, "Juzgado Penal de Primera Instancia", 4L, "Penal",
-                TipoDemanda.PRIVADA, EstadoSolicitud.CANCELADO,
-                new BigDecimal("200.00"), ahora.minusDays(2)));
+        // Pública recién capturada: lista para pago
+        solicitud("EXP-2026-001", "Laura Méndez Ortiz", "MEOL850312AB1", "laura.mendez@example.com", trabajador);
 
-        SolicitudCopia pagada = solicitudDao.guardar(new SolicitudCopia(
-                null, "CC-2026-E5H1V7", "EXP-2026-00042",
-                1L, "Juzgado Primero Civil", 1L, "Civil",
-                TipoDemanda.PUBLICA, EstadoSolicitud.PAGADO_EN_PREPARACION,
-                new BigDecimal("150.00"), ahora.minusDays(1).minusHours(4)));
+        // Pública pagada, la copia aún no está: queda en preparación
+        SolicitudCopia enPreparacion = solicitud("EXP-2026-003", "Jorge Luis Vega Ramos", "VERJ791110TT6",
+                "jorge.vega@example.com", trabajador);
+        pagadaDePrueba(enPreparacion, trabajador);
 
-        Pago pagoEjemplo = new Pago();
-        pagoEjemplo.setSolicitudId(pagada.getId());
-        pagoEjemplo.setFolioSolicitud(pagada.getFolioSolicitud());
-        pagoEjemplo.setNumeroExpediente(pagada.getNumeroExpediente());
-        pagoEjemplo.setFolioPago("PAG-2026-9M3X4K");
-        pagoEjemplo.setMonto(pagada.getCosto());
-        pagoEjemplo.setMoneda("MXN");
-        pagoEjemplo.setStripeSessionId("cs_test_ejemplo_inicial");
-        pagoEjemplo.setStripePaymentIntentId("pi_ejemplo_inicial");
-        pagoEjemplo.setEstadoPago("PAGADO");
-        pagoEjemplo.setMetodoPago("Stripe Checkout (Tarjeta)");
-        pagoEjemplo.setFecha(ahora.minusDays(1));
-        pagoEjemplo.setSimulado(false);
-        pagoDao.guardar(pagoEjemplo);
+        // Pública pagada y entregada al momento
+        SolicitudCopia entregada = solicitud("EXP-2026-001", "Roberto Salas Méndez", "SAMR800101AB2",
+                "roberto.salas@example.com", trabajador);
+        pagadaDePrueba(entregada, trabajador);
+        entregaService.entregar(entregada.getId(), trabajador);
+    }
+
+    private Long trabajador(String nombre, String correo) {
+        PersonalForm form = new PersonalForm();
+        form.setNombre(nombre);
+        form.setCorreo(correo);
+        return personalService.registrar(form).getId();
+    }
+
+    private SolicitudCopia solicitud(String expediente, String nombre, String rfc, String correo, Long usuarioId) {
+        SolicitudForm form = new SolicitudForm();
+        form.setNumeroExpediente(expediente);
+        form.setSolicitanteNombre(nombre);
+        form.setSolicitanteRfc(rfc);
+        form.setSolicitanteCorreo(correo);
+        return solicitudService.registrar(form, null, usuarioId);
+    }
+
+    // TEMPORAL: solo el estado; el registro del pago (cop_pago) lo hace la parte de pagos
+    private void pagadaDePrueba(SolicitudCopia solicitud, Long usuarioId) {
+        historialService.cambiarEstado(solicitud, EstadoSolicitud.PAGADO_EN_PREPARACION, "Pago de prueba (datos iniciales)",
+                usuarioId);
     }
 }

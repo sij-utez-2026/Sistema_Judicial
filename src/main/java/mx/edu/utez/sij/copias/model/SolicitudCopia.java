@@ -1,50 +1,87 @@
 package mx.edu.utez.sij.copias.model;
 
+import mx.edu.utez.sij.copias.temporal.ExpedienteApi.TipoExpediente;
+
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Locale;
 
 /**
- * Solicitud de copias certificadas (tabla cop_solicitud).
+ * Solicitud de copia certificada (tabla cop_solicitud, docs/modulos/copias-diccionario-datos.md).
+ *
+ * Hoy los datos viven en SolicitudCopiaDaoMemoria; con MySQL los guarda SolicitudCopiaDaoMySql (bd/50_copias.sql).
+ *
+ * Del expediente de Oficialía solo se guardan los datos esenciales (número, tipo, juzgado y materia);
+ * las partes se consultan con ExpedienteApi al validar y no se guardan aquí.
+ * Columnas *_por: id de core_usuario (FK cuando exista el núcleo).
  */
 public class SolicitudCopia {
 
-    private static final DateTimeFormatter FORMATO_FECHA =
-            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm 'h'", Locale.forLanguageTag("es-MX"));
-
     private Long id;
-    private String folioSolicitud;
+
+    // CC-AAAA-XXXXXX, con parte aleatoria para que no se pueda adivinar
+    private String folio;
+
+    // Datos esenciales del expediente (Oficialía, sin FK)
     private String numeroExpediente;
+
+    private TipoExpediente tipo;
+
     private Long juzgadoId;
-    private String juzgadoNombre;
+
+    // Nombre del juzgado y de la materia al momento de la solicitud, para el registro y el comprobante
+    private String juzgado;
+
     private Long materiaId;
-    private String materiaNombre;
-    private TipoDemanda tipo;
+
+    private String materia;
+
+    // Solicitante (no tiene cuenta: el trabajador captura sus datos)
+    private String solicitanteNombre;
+
+    private String solicitanteRfc;
+
+    private String solicitanteCorreo;
+
+    // INE: id de core_archivo. Solo en expedientes privados
+    private Long ineArchivoId;
+
     private EstadoSolicitud estado;
+
+    private Long tarifaId;
+
+    // Costo congelado al crear la solicitud
     private BigDecimal costo;
+
+    private String motivoRechazo;
+
+    private Long capturadoPor;
+
+    private Long validadoPor;
+
     private LocalDateTime fechaSolicitud;
 
-    public SolicitudCopia() {
+    private LocalDateTime fechaValidacion;
+
+    private LocalDateTime actualizadoEn;
+
+    public boolean isPrivada() {
+        return tipo == TipoExpediente.PRIVADO;
     }
 
-    public SolicitudCopia(Long id, String folioSolicitud, String numeroExpediente,
-                          Long juzgadoId, String juzgadoNombre, Long materiaId, String materiaNombre,
-                          TipoDemanda tipo, EstadoSolicitud estado, BigDecimal costo, LocalDateTime fechaSolicitud) {
-        this.id = id;
-        this.folioSolicitud = folioSolicitud;
-        this.numeroExpediente = numeroExpediente;
-        this.juzgadoId = juzgadoId;
-        this.juzgadoNombre = juzgadoNombre;
-        this.materiaId = materiaId;
-        this.materiaNombre = materiaNombre;
-        this.tipo = tipo;
-        this.estado = estado;
-        this.costo = costo;
-        this.fechaSolicitud = fechaSolicitud;
+    public String getTipoTexto() {
+        return isPrivada() ? "Privado" : "Público";
+    }
+
+    public String getCostoTexto() {
+        return Formatos.dinero(costo);
+    }
+
+    public String getFechaSolicitudTexto() {
+        return Formatos.fechaHora(fechaSolicitud);
+    }
+
+    public String getFechaValidacionTexto() {
+        return Formatos.fechaHora(fechaValidacion);
     }
 
     public Long getId() {
@@ -55,12 +92,12 @@ public class SolicitudCopia {
         this.id = id;
     }
 
-    public String getFolioSolicitud() {
-        return folioSolicitud;
+    public String getFolio() {
+        return folio;
     }
 
-    public void setFolioSolicitud(String folioSolicitud) {
-        this.folioSolicitud = folioSolicitud;
+    public void setFolio(String folio) {
+        this.folio = folio;
     }
 
     public String getNumeroExpediente() {
@@ -71,6 +108,14 @@ public class SolicitudCopia {
         this.numeroExpediente = numeroExpediente;
     }
 
+    public TipoExpediente getTipo() {
+        return tipo;
+    }
+
+    public void setTipo(TipoExpediente tipo) {
+        this.tipo = tipo;
+    }
+
     public Long getJuzgadoId() {
         return juzgadoId;
     }
@@ -79,12 +124,12 @@ public class SolicitudCopia {
         this.juzgadoId = juzgadoId;
     }
 
-    public String getJuzgadoNombre() {
-        return juzgadoNombre;
+    public String getJuzgado() {
+        return juzgado;
     }
 
-    public void setJuzgadoNombre(String juzgadoNombre) {
-        this.juzgadoNombre = juzgadoNombre;
+    public void setJuzgado(String juzgado) {
+        this.juzgado = juzgado;
     }
 
     public Long getMateriaId() {
@@ -95,20 +140,44 @@ public class SolicitudCopia {
         this.materiaId = materiaId;
     }
 
-    public String getMateriaNombre() {
-        return materiaNombre;
+    public String getMateria() {
+        return materia;
     }
 
-    public void setMateriaNombre(String materiaNombre) {
-        this.materiaNombre = materiaNombre;
+    public void setMateria(String materia) {
+        this.materia = materia;
     }
 
-    public TipoDemanda getTipo() {
-        return tipo;
+    public String getSolicitanteNombre() {
+        return solicitanteNombre;
     }
 
-    public void setTipo(TipoDemanda tipo) {
-        this.tipo = tipo;
+    public void setSolicitanteNombre(String solicitanteNombre) {
+        this.solicitanteNombre = solicitanteNombre;
+    }
+
+    public String getSolicitanteRfc() {
+        return solicitanteRfc;
+    }
+
+    public void setSolicitanteRfc(String solicitanteRfc) {
+        this.solicitanteRfc = solicitanteRfc;
+    }
+
+    public String getSolicitanteCorreo() {
+        return solicitanteCorreo;
+    }
+
+    public void setSolicitanteCorreo(String solicitanteCorreo) {
+        this.solicitanteCorreo = solicitanteCorreo;
+    }
+
+    public Long getIneArchivoId() {
+        return ineArchivoId;
+    }
+
+    public void setIneArchivoId(Long ineArchivoId) {
+        this.ineArchivoId = ineArchivoId;
     }
 
     public EstadoSolicitud getEstado() {
@@ -119,12 +188,44 @@ public class SolicitudCopia {
         this.estado = estado;
     }
 
+    public Long getTarifaId() {
+        return tarifaId;
+    }
+
+    public void setTarifaId(Long tarifaId) {
+        this.tarifaId = tarifaId;
+    }
+
     public BigDecimal getCosto() {
         return costo;
     }
 
     public void setCosto(BigDecimal costo) {
         this.costo = costo;
+    }
+
+    public String getMotivoRechazo() {
+        return motivoRechazo;
+    }
+
+    public void setMotivoRechazo(String motivoRechazo) {
+        this.motivoRechazo = motivoRechazo;
+    }
+
+    public Long getCapturadoPor() {
+        return capturadoPor;
+    }
+
+    public void setCapturadoPor(Long capturadoPor) {
+        this.capturadoPor = capturadoPor;
+    }
+
+    public Long getValidadoPor() {
+        return validadoPor;
+    }
+
+    public void setValidadoPor(Long validadoPor) {
+        this.validadoPor = validadoPor;
     }
 
     public LocalDateTime getFechaSolicitud() {
@@ -135,27 +236,19 @@ public class SolicitudCopia {
         this.fechaSolicitud = fechaSolicitud;
     }
 
-    /** Monto en centavos para Stripe Checkout (por ejemplo $150.00 MXN -> 15000). */
-    public long getCostoCentavos() {
-        if (costo == null) {
-            return 0L;
-        }
-        return costo.setScale(2, RoundingMode.HALF_UP).movePointRight(2).longValueExact();
+    public LocalDateTime getFechaValidacion() {
+        return fechaValidacion;
     }
 
-    public String getCostoFormateado() {
-        if (costo == null) {
-            return "$0.00 MXN";
-        }
-        DecimalFormat formato = new DecimalFormat("#,##0.00", DecimalFormatSymbols.getInstance(Locale.US));
-        return "$" + formato.format(costo.setScale(2, RoundingMode.HALF_UP)) + " MXN";
+    public void setFechaValidacion(LocalDateTime fechaValidacion) {
+        this.fechaValidacion = fechaValidacion;
     }
 
-    public String getFechaSolicitudFormateada() {
-        return fechaSolicitud == null ? "" : fechaSolicitud.format(FORMATO_FECHA);
+    public LocalDateTime getActualizadoEn() {
+        return actualizadoEn;
     }
 
-    public boolean isPagable() {
-        return estado != null && estado.esPagable();
+    public void setActualizadoEn(LocalDateTime actualizadoEn) {
+        this.actualizadoEn = actualizadoEn;
     }
 }

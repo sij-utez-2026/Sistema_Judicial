@@ -1,62 +1,94 @@
--- Script del módulo de Copias Certificadas (Equipo 5 · prefijo cop_)
--- Ejecutar después de 00_nucleo.sql y 10_oficialia.sql sobre la base de datos sij.
+-- =====================================================================================
+-- Copias Certificadas (EQUIPO 5) · tablas cop_*
+-- Se ejecuta después de 00_nucleo.sql y 10_oficialia.sql (docs/ARQUITECTURA.md, sección 11).
+-- Detalle de cada columna: docs/modulos/copias-diccionario-datos.md
+--
+-- TODO núcleo: cuando existan core_usuario y core_archivo, agregar sus FOREIGN KEY
+--              (columnas *_por, usuario_id e ine_archivo_id).
+-- Pagos: la tabla cop_pago la agrega la parte de pagos del equipo en este mismo archivo.
+-- =====================================================================================
 
+USE sij;
+
+-- Tarifa de la copia (pendiente 17: quién la configura). La vigente es la más reciente que ya empezó.
 CREATE TABLE IF NOT EXISTS cop_tarifa (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    monto DECIMAL(10, 2) NOT NULL,
-    vigente_desde DATE NOT NULL
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    monto         DECIMAL(10, 2) NOT NULL,
+    vigente_desde DATE           NOT NULL,
+    creada_por    BIGINT         NULL
 );
 
+-- Solicitud de copia certificada. Del expediente de Oficialía solo se guardan los datos esenciales (sin FK).
 CREATE TABLE IF NOT EXISTS cop_solicitud (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    folio_solicitud VARCHAR(30) NOT NULL UNIQUE,
-    numero_expediente VARCHAR(40) NOT NULL,
-    juzgado_id BIGINT NOT NULL,
-    materia_id BIGINT NOT NULL,
-    tipo VARCHAR(20) NOT NULL,
-    estado VARCHAR(30) NOT NULL,
-    costo DECIMAL(10, 2) NOT NULL,
-    solicitante_nombre VARCHAR(150) NULL,
-    solicitante_rfc VARCHAR(20) NULL,
-    ine_archivo_id BIGINT NULL,
-    validado_por BIGINT NULL,
-    motivo_cancelacion VARCHAR(255) NULL,
-    fecha_solicitud DATETIME NOT NULL
+    id                 BIGINT AUTO_INCREMENT PRIMARY KEY,
+    folio              VARCHAR(20)    NOT NULL UNIQUE,
+    numero_expediente  VARCHAR(30)    NOT NULL,
+    tipo               VARCHAR(10)    NOT NULL,              -- PUBLICO | PRIVADO
+    juzgado_id         BIGINT         NOT NULL,
+    juzgado            VARCHAR(150)   NOT NULL,
+    materia_id         BIGINT         NOT NULL,
+    materia            VARCHAR(80)    NOT NULL,
+    solicitante_nombre VARCHAR(150)   NOT NULL,
+    solicitante_rfc    VARCHAR(13)    NOT NULL,
+    solicitante_correo VARCHAR(150)   NOT NULL,
+    ine_archivo_id     BIGINT         NULL,                  -- core_archivo, solo privadas
+    estado             VARCHAR(30)    NOT NULL,              -- ver EstadoSolicitud
+    tarifa_id          BIGINT         NOT NULL,
+    costo              DECIMAL(10, 2) NOT NULL,              -- congelado al crear
+    motivo_rechazo     VARCHAR(500)   NULL,
+    capturado_por      BIGINT         NOT NULL,
+    validado_por       BIGINT         NULL,
+    fecha_solicitud    DATETIME       NOT NULL,
+    fecha_validacion   DATETIME       NULL,
+    actualizado_en     DATETIME       NULL,
+    CONSTRAINT fk_cop_solicitud_tarifa FOREIGN KEY (tarifa_id) REFERENCES cop_tarifa (id),
+    INDEX idx_cop_solicitud_expediente (numero_expediente),
+    INDEX idx_cop_solicitud_estado (estado)
 );
 
-CREATE TABLE IF NOT EXISTS cop_pago (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    solicitud_id BIGINT NOT NULL UNIQUE,
-    folio_pago VARCHAR(30) NOT NULL UNIQUE,
-    monto DECIMAL(10, 2) NOT NULL,
-    moneda VARCHAR(10) NOT NULL DEFAULT 'MXN',
-    stripe_session_id VARCHAR(255) NULL UNIQUE,
-    stripe_payment_intent_id VARCHAR(255) NULL,
-    estado_pago VARCHAR(30) NOT NULL DEFAULT 'PAGADO',
-    metodo_pago VARCHAR(80) NOT NULL DEFAULT 'Stripe Checkout (Tarjeta)',
-    fecha DATETIME NOT NULL,
-    simulado BOOLEAN NOT NULL DEFAULT FALSE,
-    CONSTRAINT fk_cop_pago_solicitud FOREIGN KEY (solicitud_id) REFERENCES cop_solicitud(id)
+-- Entrega física. Una por solicitud; después el folio queda inhabilitado (RN-03).
+CREATE TABLE IF NOT EXISTS cop_entrega (
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    solicitud_id  BIGINT   NOT NULL UNIQUE,
+    entregado_por BIGINT   NOT NULL,
+    fecha         DATETIME NOT NULL,
+    CONSTRAINT fk_cop_entrega_solicitud FOREIGN KEY (solicitud_id) REFERENCES cop_solicitud (id)
 );
 
+-- Correos enviados al solicitante (comprobante y aviso de "lista para recoger").
+CREATE TABLE IF NOT EXISTS cop_correo (
+    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+    solicitud_id BIGINT       NOT NULL,
+    tipo         VARCHAR(20)  NOT NULL,                     -- COMPROBANTE | LISTA_PARA_RECOGER
+    destinatario VARCHAR(150) NOT NULL,
+    enviado_por  BIGINT       NOT NULL,
+    enviado_en   DATETIME     NOT NULL,
+    exito        BOOLEAN      NOT NULL,
+    CONSTRAINT fk_cop_correo_solicitud FOREIGN KEY (solicitud_id) REFERENCES cop_solicitud (id)
+);
+
+-- Cada cambio de estado de una solicitud: quién y cuándo.
 CREATE TABLE IF NOT EXISTS cop_solicitud_historial (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    solicitud_id BIGINT NOT NULL,
-    estado_anterior VARCHAR(30) NULL,
-    estado_nuevo VARCHAR(30) NOT NULL,
-    usuario_id BIGINT NULL,
-    fecha DATETIME NOT NULL,
-    CONSTRAINT fk_cop_hist_solicitud FOREIGN KEY (solicitud_id) REFERENCES cop_solicitud(id)
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    solicitud_id    BIGINT       NOT NULL,
+    estado_anterior VARCHAR(30)  NULL,                      -- nulo al crear
+    estado_nuevo    VARCHAR(30)  NOT NULL,
+    usuario_id      BIGINT       NOT NULL,
+    comentario      VARCHAR(500) NULL,
+    fecha           DATETIME     NOT NULL,
+    CONSTRAINT fk_cop_historial_solicitud FOREIGN KEY (solicitud_id) REFERENCES cop_solicitud (id)
 );
 
--- Datos de prueba iniciales (RF 4.1)
-INSERT IGNORE INTO cop_tarifa (id, monto, vigente_desde)
-VALUES (1, 150.00, '2026-01-01');
+-- Colores de las pantallas de Copias (COPIAS_ADMIN).
+CREATE TABLE IF NOT EXISTS cop_color (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    variable        VARCHAR(40) NOT NULL UNIQUE,
+    valor           VARCHAR(7)  NOT NULL,                   -- #RRGGBB
+    actualizado_por BIGINT      NULL,
+    actualizado_en  DATETIME    NULL
+);
 
-INSERT IGNORE INTO cop_solicitud (
-    folio_solicitud, numero_expediente, juzgado_id, materia_id, tipo, estado, costo, fecha_solicitud
-) VALUES
-    ('CC-2026-A7K9M2', 'EXP-2026-00104', 1, 1, 'PUBLICA', 'LISTO_PARA_PAGO', 150.00, NOW()),
-    ('CC-2026-B3P8Q5', 'EXP-2026-00219', 2, 2, 'PRIVADA', 'APROBADO', 250.00, NOW()),
-    ('CC-2026-C9W4R1', 'EXP-2026-00308', 3, 3, 'PRIVADA', 'EN_ESPERA_VALIDACION', 180.00, NOW()),
-    ('CC-2026-D2N6T8', 'EXP-2026-00087', 4, 4, 'PRIVADA', 'CANCELADO', 200.00, NOW());
+-- Datos iniciales: tarifa de prueba (pendiente 17)
+INSERT INTO cop_tarifa (monto, vigente_desde)
+SELECT 320.00, '2026-01-01'
+WHERE NOT EXISTS (SELECT 1 FROM cop_tarifa);
