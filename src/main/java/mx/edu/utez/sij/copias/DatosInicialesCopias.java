@@ -2,10 +2,9 @@ package mx.edu.utez.sij.copias;
 
 import mx.edu.utez.sij.copias.dto.PersonalForm;
 import mx.edu.utez.sij.copias.dto.SolicitudForm;
-import mx.edu.utez.sij.copias.model.EstadoSolicitud;
 import mx.edu.utez.sij.copias.model.SolicitudCopia;
 import mx.edu.utez.sij.copias.service.EntregaService;
-import mx.edu.utez.sij.copias.service.HistorialService;
+import mx.edu.utez.sij.copias.service.PagoService;
 import mx.edu.utez.sij.copias.service.PersonalCopiasService;
 import mx.edu.utez.sij.copias.service.SolicitudCopiaService;
 import mx.edu.utez.sij.copias.service.TarifaService;
@@ -34,17 +33,17 @@ public class DatosInicialesCopias {
     private final UsuarioServiceTemporal usuarios;
     private final PersonalCopiasService personalService;
     private final SolicitudCopiaService solicitudService;
-    private final HistorialService historialService;
+    private final PagoService pagoService;
     private final EntregaService entregaService;
 
     public DatosInicialesCopias(TarifaService tarifaService, UsuarioServiceTemporal usuarios,
                                 PersonalCopiasService personalService, SolicitudCopiaService solicitudService,
-                                HistorialService historialService, EntregaService entregaService) {
+                                PagoService pagoService, EntregaService entregaService) {
         this.tarifaService = tarifaService;
         this.usuarios = usuarios;
         this.personalService = personalService;
         this.solicitudService = solicitudService;
-        this.historialService = historialService;
+        this.pagoService = pagoService;
         this.entregaService = entregaService;
     }
 
@@ -96,9 +95,7 @@ public class DatosInicialesCopias {
         return solicitudService.registrar(form, null, usuarioId);
     }
 
-    // TEMPORAL: solo el estado; el registro del pago (cop_pago) lo hace la parte de pagos
     private void pagadaDePrueba(SolicitudCopia solicitud, Long usuarioId) {
-        historialService.cambiarEstado(solicitud, EstadoSolicitud.PAGADO_EN_PREPARACION, "Pago de prueba (datos iniciales)",
-                usuarioId);
+        pagoService.registrarPago(solicitud.getId(), usuarioId);
     }
 }

@@ -5,7 +5,6 @@
 --
 -- TODO núcleo: cuando existan core_usuario y core_archivo, agregar sus FOREIGN KEY
 --              (columnas *_por, usuario_id e ine_archivo_id).
--- Pagos: la tabla cop_pago la agrega la parte de pagos del equipo en este mismo archivo.
 -- =====================================================================================
 
 USE sij;
@@ -44,6 +43,18 @@ CREATE TABLE IF NOT EXISTS cop_solicitud (
     CONSTRAINT fk_cop_solicitud_tarifa FOREIGN KEY (tarifa_id) REFERENCES cop_tarifa (id),
     INDEX idx_cop_solicitud_expediente (numero_expediente),
     INDEX idx_cop_solicitud_estado (estado)
+);
+
+-- Pago simulado de la solicitud (RF 4.1). Una solicitud se paga una sola vez.
+CREATE TABLE IF NOT EXISTS cop_pago (
+    id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+    solicitud_id   BIGINT         NOT NULL UNIQUE,
+    folio_pago     VARCHAR(20)    NOT NULL UNIQUE,           -- CP-AAAA-XXXXXX
+    monto          DECIMAL(10, 2) NOT NULL,
+    simulado       BOOLEAN        NOT NULL DEFAULT TRUE,
+    registrado_por BIGINT         NOT NULL,
+    fecha          DATETIME       NOT NULL,
+    CONSTRAINT fk_cop_pago_solicitud FOREIGN KEY (solicitud_id) REFERENCES cop_solicitud (id)
 );
 
 -- Entrega física. Una por solicitud; después el folio queda inhabilitado (RN-03).

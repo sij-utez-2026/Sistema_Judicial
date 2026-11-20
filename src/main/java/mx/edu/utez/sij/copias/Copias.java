@@ -8,6 +8,8 @@ import mx.edu.utez.sij.copias.dao.EntregaDao;
 import mx.edu.utez.sij.copias.dao.EntregaDaoMemoria;
 import mx.edu.utez.sij.copias.dao.HistorialSolicitudDao;
 import mx.edu.utez.sij.copias.dao.HistorialSolicitudDaoMemoria;
+import mx.edu.utez.sij.copias.dao.PagoDao;
+import mx.edu.utez.sij.copias.dao.PagoDaoMemoria;
 import mx.edu.utez.sij.copias.dao.SolicitudCopiaDao;
 import mx.edu.utez.sij.copias.dao.SolicitudCopiaDaoMemoria;
 import mx.edu.utez.sij.copias.dao.TarifaDao;
@@ -17,6 +19,7 @@ import mx.edu.utez.sij.copias.service.CorreoCopiasService;
 import mx.edu.utez.sij.copias.service.EntregaService;
 import mx.edu.utez.sij.copias.service.FolioService;
 import mx.edu.utez.sij.copias.service.HistorialService;
+import mx.edu.utez.sij.copias.service.PagoService;
 import mx.edu.utez.sij.copias.service.PersonalCopiasService;
 import mx.edu.utez.sij.copias.service.SolicitudCopiaService;
 import mx.edu.utez.sij.copias.service.TarifaService;
@@ -44,6 +47,7 @@ public final class Copias {
 
     // DAO (hoy en memoria)
     private static final SolicitudCopiaDao SOLICITUD_DAO = new SolicitudCopiaDaoMemoria();
+    private static final PagoDao PAGO_DAO = new PagoDaoMemoria();
     private static final EntregaDao ENTREGA_DAO = new EntregaDaoMemoria();
     private static final CorreoEnviadoDao CORREO_DAO = new CorreoEnviadoDaoMemoria();
     private static final HistorialSolicitudDao HISTORIAL_DAO = new HistorialSolicitudDaoMemoria();
@@ -69,6 +73,7 @@ public final class Copias {
             ARCHIVOS, TARIFAS, FOLIOS, HISTORIAL);
     private static final ValidacionService VALIDACION = new ValidacionService(SOLICITUD_DAO, SOLICITUDES, HISTORIAL,
             EXPEDIENTE_API, ARCHIVOS);
+    private static final PagoService PAGOS = new PagoService(PAGO_DAO, SOLICITUDES, HISTORIAL, CORREOS);
     private static final EntregaService ENTREGAS = new EntregaService(ENTREGA_DAO, SOLICITUD_DAO, SOLICITUDES,
             HISTORIAL, CORREOS);
     private static final PersonalCopiasService PERSONAL = new PersonalCopiasService(USUARIOS);
@@ -108,6 +113,10 @@ public final class Copias {
 
     public static ValidacionService validacionService() {
         return VALIDACION;
+    }
+
+    public static PagoService pagoService() {
+        return PAGOS;
     }
 
     public static EntregaService entregaService() {
