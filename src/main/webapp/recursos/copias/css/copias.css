@@ -176,24 +176,21 @@
     padding: 0 .75rem;
 }
 
+.cop-modo-actual {
+    color: var(--sij-acento);
+    font-size: .8rem;
+    margin-bottom: .35rem;
+}
+
+.cop-modo-select {
+    background-color: rgba(255, 255, 255, .95);
+    font-size: .8rem;
+}
+
 .cop-modo-opcion {
-    flex: 1;
     color: rgba(255, 255, 255, .8);
     border: 1px solid rgba(255, 255, 255, .35);
     background: transparent;
-}
-
-.cop-modo-opcion:hover {
-    color: #fff;
-    border-color: var(--sij-acento);
-}
-
-.cop-modo-activo,
-.cop-modo-activo:hover {
-    color: var(--sij-primario);
-    background: var(--sij-acento);
-    border-color: var(--sij-acento);
-    font-weight: 600;
 }
 
 /* Comprobante: al imprimir solo sale el comprobante */

@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import mx.edu.utez.sij.copias.Copias;
 import mx.edu.utez.sij.copias.RolesCopias;
+import mx.edu.utez.sij.copias.sesion.UsuarioCopias;
 import mx.edu.utez.sij.copias.dto.ColoresForm;
 import mx.edu.utez.sij.copias.service.ColoresCopiasService;
 import mx.edu.utez.sij.copias.temporal.AccesoTemporal;
@@ -31,7 +32,8 @@ public class ColoresServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        if (!acceso.exigirRol(request, response, RolesCopias.ADMIN)) {
+        UsuarioCopias usuario = acceso.exigirRol(request, response, RolesCopias.ADMIN);
+        if (usuario == null) {
             return;
         }
         request.setAttribute("coloresForm", coloresService.formulario());
@@ -40,7 +42,8 @@ public class ColoresServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        if (!acceso.exigirRol(request, response, RolesCopias.ADMIN)) {
+        UsuarioCopias usuario = acceso.exigirRol(request, response, RolesCopias.ADMIN);
+        if (usuario == null) {
             return;
         }
         ColoresForm form = new ColoresForm();
@@ -54,7 +57,7 @@ public class ColoresServlet extends HttpServlet {
 
         if (errores.isEmpty()) {
             try {
-                coloresService.guardar(form);
+                coloresService.guardar(form, usuario.getId());
                 FlashMessage.exito(request, "Colores actualizados correctamente", null);
                 Vistas.redirigir(request, response, "/copias/admin/colores");
                 return;

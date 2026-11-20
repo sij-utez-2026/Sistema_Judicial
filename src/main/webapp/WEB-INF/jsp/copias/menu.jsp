@@ -4,19 +4,23 @@
 <%--
   Menú lateral del módulo de Copias Certificadas (EQUIPO 5). Lo incluye layout.tag cuando la pantalla usa modulo="copias".
   - clave: la misma que la pantalla pone en <t:layout seccion="...">, para marcarla activa.
-  - Cada rol ve solo sus opciones. Hoy se decide con esAdminCopias (FiltroCopias, "Modo de prueba").
-    TODO: con el inicio de sesión del núcleo, esAdminCopias saldrá del rol del usuario en sesión
-    y se borra el bloque "Modo de prueba".
+  - Cada rol ve solo sus opciones (esAdminCopias y usuarioCopias los pone FiltroCopias, a partir de SesionCopias).
+  - Quien entra con un rol de Oficialía (admin_op / usuario_op) ve además "Volver a Oficialía".
+  - TODO: con el inicio de sesión del núcleo, se borra el bloque "Modo de prueba".
 --%>
+<c:if test="${usuarioCopias.deOficialia}">
+    <n:menu-item clave="volver-oficialia" url="${inicioOficialia}" texto="← Volver a Oficialía" icono="edificio"/>
+</c:if>
+
 <c:choose>
     <c:when test="${esAdminCopias}">
-        <%-- COPIAS_ADMIN: administración del área --%>
+        <%-- COPIAS_ADMIN (o admin_op de Oficialía): administración del área --%>
         <n:menu-item clave="admin-inicio" url="/copias/admin" texto="Inicio" icono="inicio"/>
         <n:menu-item clave="personal" url="/copias/admin/personal" texto="Trabajadores" icono="personas"/>
         <n:menu-item clave="colores" url="/copias/admin/colores" texto="Colores" icono="editar"/>
     </c:when>
     <c:otherwise>
-        <%-- COPIAS_PERSONAL: trabajo diario --%>
+        <%-- COPIAS_PERSONAL (o usuario_op de Oficialía): trabajo diario --%>
         <n:menu-item clave="inicio" url="/copias" texto="Inicio" icono="inicio"/>
         <n:menu-item clave="nueva" url="/copias/solicitudes/nueva" texto="Nueva solicitud" icono="mas"/>
         <n:menu-item clave="solicitudes" url="/copias/solicitudes" texto="Registro de solicitudes" icono="buscar"/>
@@ -25,16 +29,25 @@
     </c:otherwise>
 </c:choose>
 
-<%-- TEMPORAL: "Modo de prueba" para ver las dos vistas sin inicio de sesión (ModoPruebaServlet) --%>
+<%-- TEMPORAL: "Modo de prueba" para entrar como cualquier usuario sin inicio de sesión (ModoPruebaServlet) --%>
 <div class="cop-modo-prueba">
     <div class="sij-etiqueta-menu">Modo de prueba</div>
-    <form method="post" action="<c:url value='/copias/modo-prueba'/>" class="d-flex gap-1">
+    <c:if test="${not empty usuarioCopias}">
+        <div class="cop-modo-actual">
+            <c:out value="${usuarioCopias.nombre}"/> ·
+            <c:out value="${usuarioCopias.rolTexto}"/><c:if test="${usuarioCopias.deOficialia}"> (Oficialía)</c:if>
+        </div>
+    </c:if>
+    <form method="post" action="<c:url value='/copias/modo-prueba'/>">
         <n:csrf/>
-        <button type="submit" name="rol" value="COPIAS_PERSONAL"
-                class="btn btn-sm ${esAdminCopias ? 'cop-modo-opcion' : 'cop-modo-opcion cop-modo-activo'}"
-                <c:if test="${not esAdminCopias}">aria-pressed="true"</c:if>>Trabajador</button>
-        <button type="submit" name="rol" value="COPIAS_ADMIN"
-                class="btn btn-sm ${esAdminCopias ? 'cop-modo-opcion cop-modo-activo' : 'cop-modo-opcion'}"
-                <c:if test="${esAdminCopias}">aria-pressed="true"</c:if>>Administrador</button>
+        <label for="copiasUsuarioPrueba" class="visually-hidden">Entrar como</label>
+        <select id="copiasUsuarioPrueba" name="usuarioId" class="form-select form-select-sm cop-modo-select" data-autoenvio>
+            <c:forEach var="u" items="${usuariosDePrueba}">
+                <option value="<c:out value='${u.id}'/>"${u.id eq usuarioCopias.id ? ' selected' : ''}>
+                    <c:out value="${u.nombre}"/> — <c:out value="${u.rolTexto}"/><c:if test="${u.deOficialia}"> (Oficialía)</c:if>
+                </option>
+            </c:forEach>
+        </select>
+        <noscript><button type="submit" class="btn btn-sm cop-modo-opcion mt-1">Cambiar</button></noscript>
     </form>
 </div>

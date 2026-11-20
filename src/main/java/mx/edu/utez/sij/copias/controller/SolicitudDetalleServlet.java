@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import mx.edu.utez.sij.copias.Copias;
 import mx.edu.utez.sij.copias.RolesCopias;
+import mx.edu.utez.sij.copias.sesion.UsuarioCopias;
 import mx.edu.utez.sij.copias.model.SolicitudCopia;
 import mx.edu.utez.sij.copias.service.SolicitudCopiaService;
 import mx.edu.utez.sij.copias.temporal.AccesoTemporal;
@@ -27,7 +28,8 @@ public class SolicitudDetalleServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        if (!acceso.exigirRol(request, response, RolesCopias.PERSONAL)) {
+        UsuarioCopias usuario = acceso.exigirRol(request, response, RolesCopias.PERSONAL);
+        if (usuario == null) {
             return;
         }
         Long id = Parametros.numero(request, "id");

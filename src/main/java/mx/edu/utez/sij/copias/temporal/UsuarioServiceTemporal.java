@@ -12,7 +12,10 @@ import java.util.Set;
 
 /**
  * TEMPORAL: imita UsuarioService del núcleo (core_usuario y core_usuario_rol) en memoria.
- * Copias solo lo usa para que COPIAS_ADMIN dé de alta, desactive y reactive a sus trabajadores.
+ * Copias lo usa para:
+ * - que COPIAS_ADMIN dé de alta, desactive y reactive a sus trabajadores;
+ * - el "Modo de prueba" (SesionCopias), que deja entrar como cualquiera de estos usuarios,
+ *   incluidos los de prueba de Oficialía (admin_op y usuario_op).
  * Cuando exista el núcleo se cambian los import y se borra esta clase.
  */
 public class UsuarioServiceTemporal {
@@ -84,6 +87,11 @@ public class UsuarioServiceTemporal {
         }
         lista.sort(Comparator.comparing(Usuario::getNombre, String.CASE_INSENSITIVE_ORDER));
         return lista;
+    }
+
+    /** Todos los usuarios, en el orden en que se crearon (para el "Modo de prueba"). */
+    public synchronized List<Usuario> todos() {
+        return new ArrayList<>(usuarios.values());
     }
 
     public synchronized Optional<Usuario> buscar(Long id) {

@@ -55,10 +55,15 @@ Digitaliza la captura, validación, cobro y entrega de copias certificadas de de
 | Solicitante (ciudadano, parte, abogado) | **No entra al sistema** | Da sus datos en ventanilla y recibe el comprobante y el aviso por correo |
 | `COPIAS_PERSONAL` (trabajador o juzgado) | Login | Capturar solicitudes, validar privadas (ve la INE), registrar el pago, imprimir o enviar el comprobante, avisar y registrar la entrega |
 | `COPIAS_ADMIN` (administrador del área) | Login | Dar de alta, desactivar y reactivar trabajadores; cambiar los colores de Copias |
+| `usuario_op` (usuario de Oficialía de Partes) | Login, desde el botón "Copias certificadas" de Oficialía | Lo mismo que `COPIAS_PERSONAL` (entra como **Trabajador**) |
+| `admin_op` (administrador de usuarios de Oficialía) | Login, desde el botón "Copias certificadas" de Oficialía | Lo mismo que `COPIAS_ADMIN` (entra como **Administrador**) |
+| Superadministrador (general) | — | Sin cambios por ahora [Confirmar] |
+
+**Copias funciona como una sección más de Oficialía de Partes** (sección 14). La equivalencia de roles está en un solo lugar: `RolesCopias.rolEnCopias(...)`.
 
 **Las vistas están separadas:** cada rol tiene su propio inicio, su menú y sus pantallas, y no puede abrir las del otro (página 403). El administrador no captura ni entrega solicitudes.
 
-**Mientras no exista el inicio de sesión del núcleo (TEMPORAL):** el menú tiene un selector **"Modo de prueba: Trabajador | Administrador"** que guarda el rol en la sesión del navegador (sin usuario ni contraseña). Al empezar, el rol es Trabajador.
+**Mientras no exista el inicio de sesión del núcleo (TEMPORAL):** el menú tiene un selector **"Modo de prueba"** para entrar como cualquiera de los usuarios de prueba: el administrador y los trabajadores del Equipo 5, o los usuarios simulados de Oficialía (`admin_op` y `usuario_op`). Sin contraseña. Si no se elige a nadie, entra el primer trabajador activo. Así cada acción queda a nombre de una persona real (`capturado_por`, `validado_por`, `entregado_por`...).
 
 ---
 
@@ -213,7 +218,8 @@ stateDiagram-v2
 - No hay rutas públicas: todo `/copias/**` pide sesión.
 - La INE solo se ve en `/copias/validacion/ine?id=` (`COPIAS_PERSONAL`) y se sirve con su tipo según la extensión ya validada. Tamaño máximo 5 MB (`@MultipartConfig`); si se pasa, `FiltroNucleo` muestra la página 413.
 - Todo dato en las JSP con `<c:out>`; formularios `POST` con `<n:csrf/>` o `<n:confirmar>` (`FiltroNucleo` rechaza con 403 los POST sin token).
-- Cada servlet revisa el rol al inicio de `doGet` y `doPost`: hoy con `AccesoTemporal` (`if (!acceso.exigirRol(...)) return;`); con el inicio de sesión del núcleo, lo hará `FiltroNucleo` por ruta.
+- Cada servlet revisa el rol al inicio de `doGet` y `doPost` y de paso obtiene quién hace la acción: `UsuarioCopias usuario = acceso.exigirRol(...); if (usuario == null) return;`. Los services reciben `usuario.getId()` (no leen la sesión). Con el inicio de sesión del núcleo, el permiso por ruta lo hará `FiltroNucleo`.
+- Quién usa Copias lo decide **solo** `sesion/SesionCopias` (login del núcleo; mientras no existe, el Modo de prueba). Copias nunca escribe ni borra atributos de sesión de otros módulos: los suyos empiezan con `copias.`.
 - TODO núcleo: bitácora en cada cambio de estado (`HistorialService`).
 
 ---
@@ -259,7 +265,7 @@ Ya no se necesita `CatalogoJudicialApi`: el juzgado y la materia vienen del expe
 | POST | `/copias/admin/personal/estado` | ADMIN | Desactivar o reactivar (`id`, `activo`) |
 | GET / POST | `/copias/admin/colores` | ADMIN | Colores del área |
 | POST | `/copias/admin/colores/restablecer` | ADMIN | Volver a la paleta institucional |
-| POST | `/copias/modo-prueba` | TEMPORAL | Cambiar entre Trabajador y Administrador (`rol`); se borra con el login del núcleo |
+| POST | `/copias/modo-prueba` | TEMPORAL | Entrar como otro usuario de prueba (`usuarioId`); se borra con el login del núcleo |
 
 ---
 
@@ -281,7 +287,8 @@ src/main/java/mx/edu/utez/sij/copias/
 │                 EstadoSolicitud, TipoCorreo, Formatos
 ├── dto/          SolicitudForm, PersonalForm, ColoresForm, ArchivoSubido
 ├── temporal/     TEMPORAL: lo que darán el núcleo y Oficialía (ExpedienteApi, archivos, correo, sesión, usuarios)
-│                 y el "Modo de prueba" (SesionTemporal, AccesoTemporal, ModoPruebaServlet)
+│                 y el "Modo de prueba" (AccesoTemporal, ModoPruebaServlet)
+├── sesion/       SesionCopias (quién usa Copias) y UsuarioCopias (id, nombre, rol, si viene de Oficialía)
 └── DatosInicialesCopias.java
 
 src/main/webapp/WEB-INF/jsp/copias/   TRABAJADOR: inicio, solicitudes/, validacion/, entregas/
@@ -304,8 +311,8 @@ Todo lo temporal tiene un comentario `TEMPORAL` o `TODO`. Cuando lleguen:
 | MySQL (`ConexionBD` del núcleo) | Ejecutar `bd/50_copias.sql`. Crear un `...DaoMySql` por cada `...Dao` con JDBC (`PreparedStatement` y `?`, conexión en `try-with-resources`), usando el SQL de sus comentarios. En `Copias.java` cambiar cada `new ...DaoMemoria()` por `new ...DaoMySql()` y borrar las clases en memoria | Services, servlets y JSP |
 | Transacciones | Las acciones que guardan en varias tablas (crear solicitud + historial, entregar + historial) van en una sola `Connection` con `setAutoCommit(false)` (ARQUITECTURA, sección 11) | Lo demás |
 | `ExpedienteApi` de Oficialía | Cambiar los import a `nucleo.contratos.oficialia`, usar su implementación en `Copias.java` y borrar `temporal/ExpedienteApi*` | Lo demás |
-| Servicios del núcleo | Cambiar `ArchivoServiceTemporal`, `CorreoTemporal`, `SesionTemporal`, `UsuarioServiceTemporal` y `ReglaNegocioException` por los del núcleo en `Copias.java` y en los import | Services y servlets (mismos métodos) |
-| Inicio de sesión del núcleo | `FiltroNucleo` revisa los roles por ruta: borrar en cada servlet la línea `if (!acceso.exigirRol(...)) return;`. En `FiltroCopias`, `esAdminCopias` sale del usuario en sesión. Quitar el "Modo de prueba" de `menu.jsp` y borrar `SesionTemporal`, `AccesoTemporal` y `ModoPruebaServlet` | Pantallas, services y la separación por rol |
+| Servicios del núcleo | Cambiar `ArchivoServiceTemporal`, `CorreoTemporal`, `UsuarioServiceTemporal` y `ReglaNegocioException` por los del núcleo en `Copias.java` y en los import | Services y servlets (mismos métodos) |
+| Inicio de sesión del núcleo | En `SesionCopias.delNucleo(...)` leer `usuarioSesion` (id, nombre y roles; el código está en el comentario `TODO`). Quitar el "Modo de prueba" (`menu.jsp`, `ModoPruebaServlet`, `usuariosDePrueba` en `FiltroCopias`). Cuando `FiltroNucleo` revise los permisos, cambiar `AccesoTemporal` por su ayudante | Pantallas, services, la equivalencia de roles y la separación por rol |
 | `PdfService` | Plantilla `templates/pdf/copias/comprobante.html` y adjuntarlo al correo | La pantalla del comprobante |
 
 ---
@@ -320,6 +327,7 @@ No son de nuestras carpetas; se piden con un issue `contrato`.
 4. La paleta institucional acordada es distinta a la de `estilos.css` del núcleo.
 5. Un servicio de correo para destinatarios sin cuenta, con adjunto (el `NotificacionService` es para usuarios).
 6. El formato de ramas `equipo-N/<tarea>` de `AGENTS.md` no funciona en Git porque ya existe la rama `equipo-N`; se usa `equipo-N-<tarea>`.
+7. **Copias como sección de Oficialía:** cuando `FiltroNucleo` revise el permiso por módulo (ARQUITECTURA, sección 10), dejar entrar a `/copias/**` a los roles `admin_op` y `usuario_op`, no solo a `COPIAS_*`. Agregarlos a la tabla de roles (7.2). Ver la sección 14.
 
 ---
 
@@ -354,3 +362,44 @@ No son de nuestras carpetas; se piden con un issue `contrato`.
 - Si el trabajador atiende solo su juzgado (pendiente 18). Hoy: cualquier juzgado; si se decide que no, se agrega `cop_adscripcion`.
 - El formato del número de expediente (lo define Oficialía). Hoy: expedientes de prueba `EXP-2026-001` a `004`.
 - Que Oficialía capture el tipo de demanda y el RFC de las partes, porque la validación depende de eso (pendiente 5).
+- Si el superadministrador general entra a Copias y con qué rol (por ahora no se toca).
+
+---
+
+## 14. Integración con Oficialía de Partes (guía para el Equipo 1)
+
+Copias funciona como **una sección más de Oficialía de Partes**, pero sigue en su propio módulo (`/copias`, paquete `copias`). Para que el botón de Oficialía funcione con la misma sesión, **Copias ya está listo**; del lado de Oficialía solo falta lo de abajo.
+
+### 14.1 El botón en el menú de Oficialía
+
+En `src/main/webapp/WEB-INF/jsp/oficialia/menu.jsp`:
+
+```jsp
+<n:menu-item clave="copias" url="/copias" texto="Copias certificadas" icono="documento"/>
+```
+
+Es un enlace normal dentro de la misma aplicación (`/sij`), así que **la sesión se conserva**: no abre otra ventana, no cambia de dominio y nadie la invalida. Copias abre el inicio que corresponde al rol (trabajador o administrador).
+
+### 14.2 Quién entra y como qué
+
+| Rol en Oficialía | Entra a Copias como | Ve |
+| :---- | :---- | :---- |
+| `usuario_op` | Trabajador (`COPIAS_PERSONAL`) | Nueva solicitud, registro, validación y entregas |
+| `admin_op` | Administrador (`COPIAS_ADMIN`) | Trabajadores y colores del área |
+| Superadministrador | — | Por ahora no entra [Confirmar] |
+
+Quien entra con un rol de Oficialía ve en el menú de Copias **"← Volver a Oficialía"**, que lleva a `/oficialia` (constante `RolesCopias.INICIO_OFICIALIA`; si su inicio está en otra ruta, se cambia ahí).
+
+### 14.3 La sesión
+
+- Copias reconoce al usuario con el **login del núcleo** (`usuarioSesion`: id, nombre y roles, ARQUITECTURA sección 10). Oficialía no tiene que guardar nada extra para Copias.
+- Mientras no existe el login, Copias tiene su **"Modo de prueba"** con dos usuarios simulados de Oficialía (`admin_op` y `usuario_op`) para probar todo.
+- Copias **no lee ni modifica** el atributo `"usuario"` que hoy usa Oficialía, ni ningún otro atributo de sesión que no empiece con `copias.`.
+- Para que `FiltroNucleo` deje pasar a `admin_op` y `usuario_op` a `/copias/**`, hay que pedirlo a los integradores (sección 11, punto 7).
+
+### 14.4 Cómo probarlo
+
+1. Abrir `http://localhost:8080/sij/copias`.
+2. En el menú, **Modo de prueba → "Usuario de OP (prueba)"**: entra como trabajador y aparece "← Volver a Oficialía".
+3. **Modo de prueba → "Admin de usuarios de OP (prueba)"**: entra como administrador del área.
+4. Las acciones (capturar, validar, entregar) quedan a nombre del usuario elegido.

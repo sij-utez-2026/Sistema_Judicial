@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import mx.edu.utez.sij.copias.Copias;
 import mx.edu.utez.sij.copias.RolesCopias;
+import mx.edu.utez.sij.copias.sesion.UsuarioCopias;
 import mx.edu.utez.sij.copias.model.EstadoSolicitud;
 import mx.edu.utez.sij.copias.service.EntregaService;
 import mx.edu.utez.sij.copias.service.SolicitudCopiaService;
@@ -36,7 +37,8 @@ public class InicioCopiasServlet extends HttpServlet {
             Vistas.redirigir(request, response, "/copias/admin");
             return;
         }
-        if (!acceso.exigirRol(request, response, RolesCopias.PERSONAL)) {
+        UsuarioCopias usuario = acceso.exigirRol(request, response, RolesCopias.PERSONAL);
+        if (usuario == null) {
             return;
         }
         Map<EstadoSolicitud, Long> totales = solicitudService.totalesPorEstado();

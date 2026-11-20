@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import mx.edu.utez.sij.copias.Copias;
 import mx.edu.utez.sij.copias.RolesCopias;
+import mx.edu.utez.sij.copias.sesion.UsuarioCopias;
 import mx.edu.utez.sij.copias.service.ColoresCopiasService;
 import mx.edu.utez.sij.copias.temporal.AccesoTemporal;
 import mx.edu.utez.sij.copias.temporal.UsuarioServiceTemporal.Usuario;
@@ -26,7 +27,8 @@ public class AdminInicioServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        if (!acceso.exigirRol(request, response, RolesCopias.ADMIN)) {
+        UsuarioCopias usuario = acceso.exigirRol(request, response, RolesCopias.ADMIN);
+        if (usuario == null) {
             return;
         }
         List<Usuario> trabajadores = Copias.personalService().trabajadores();

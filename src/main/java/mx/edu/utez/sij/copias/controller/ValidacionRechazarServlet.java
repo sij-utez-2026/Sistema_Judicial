@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import mx.edu.utez.sij.copias.Copias;
 import mx.edu.utez.sij.copias.RolesCopias;
+import mx.edu.utez.sij.copias.sesion.UsuarioCopias;
 import mx.edu.utez.sij.copias.model.SolicitudCopia;
 import mx.edu.utez.sij.copias.temporal.AccesoTemporal;
 import mx.edu.utez.sij.copias.temporal.ReglaNegocioException;
@@ -26,7 +27,8 @@ public class ValidacionRechazarServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        if (!acceso.exigirRol(request, response, RolesCopias.PERSONAL)) {
+        UsuarioCopias usuario = acceso.exigirRol(request, response, RolesCopias.PERSONAL);
+        if (usuario == null) {
             return;
         }
         SolicitudCopia solicitud = ValidacionDetalleServlet.privada(Parametros.numero(request, "id"));
@@ -35,7 +37,7 @@ public class ValidacionRechazarServlet extends HttpServlet {
             return;
         }
         try {
-            Copias.validacionService().rechazar(solicitud.getId(), Parametros.texto(request, "motivo"));
+            Copias.validacionService().rechazar(solicitud.getId(), Parametros.texto(request, "motivo"), usuario.getId());
             FlashMessage.exito(request, "Solicitud rechazada", solicitud.getFolio() + " quedó Cancelada y no se podrá pagar.");
             Vistas.redirigir(request, response, "/copias/validacion");
         } catch (ReglaNegocioException e) {

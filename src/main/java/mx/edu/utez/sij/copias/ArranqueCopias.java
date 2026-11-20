@@ -12,7 +12,7 @@ public class ArranqueCopias implements ServletContextListener {
 
     @Override
     public void contextInitialized(ServletContextEvent evento) {
-        new DatosInicialesCopias(Copias.tarifaService(), Copias.personalService(), Copias.solicitudService(),
-                Copias.historialService(), Copias.entregaService(), Copias.sesion()).cargar();
+        new DatosInicialesCopias(Copias.tarifaService(), Copias.usuarios(), Copias.personalService(),
+                Copias.solicitudService(), Copias.historialService(), Copias.entregaService()).cargar();
     }
 }

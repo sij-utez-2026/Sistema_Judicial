@@ -10,7 +10,6 @@ import mx.edu.utez.sij.copias.temporal.ExpedienteApi;
 import mx.edu.utez.sij.copias.temporal.ExpedienteApi.ExpedienteDto;
 import mx.edu.utez.sij.copias.temporal.ExpedienteApi.ParteDto;
 import mx.edu.utez.sij.copias.temporal.ReglaNegocioException;
-import mx.edu.utez.sij.copias.temporal.SesionTemporal;
 
 import java.util.List;
 import java.util.Optional;
@@ -29,17 +28,15 @@ public class ValidacionService {
     private final HistorialService historialService;
     private final ExpedienteApi expedienteApi;
     private final ArchivoServiceTemporal archivoService;
-    private final SesionTemporal sesion;
 
     public ValidacionService(SolicitudCopiaDao solicitudDao, SolicitudCopiaService solicitudService,
                              HistorialService historialService, ExpedienteApi expedienteApi,
-                             ArchivoServiceTemporal archivoService, SesionTemporal sesion) {
+                             ArchivoServiceTemporal archivoService) {
         this.solicitudDao = solicitudDao;
         this.solicitudService = solicitudService;
         this.historialService = historialService;
         this.expedienteApi = expedienteApi;
         this.archivoService = archivoService;
-        this.sesion = sesion;
     }
 
     /** Bandeja: privadas en espera, las más antiguas primero. */
@@ -60,14 +57,16 @@ public class ValidacionService {
                 .orElse(List.of());
     }
 
-    public SolicitudCopia aprobar(Long id) {
+    /** usuarioId: quién da el visto bueno (lo pasa el servlet). */
+    public SolicitudCopia aprobar(Long id, Long usuarioId) {
         SolicitudCopia solicitud = enEspera(id);
-        solicitud.setValidadoPor(sesion.usuarioId());
+        solicitud.setValidadoPor(usuarioId);
         solicitud.setFechaValidacion(Formatos.ahora());
-        return historialService.cambiarEstado(solicitud, EstadoSolicitud.APROBADO, "Visto bueno: el solicitante es parte del expediente");
+        return historialService.cambiarEstado(solicitud, EstadoSolicitud.APROBADO,
+                "Visto bueno: el solicitante es parte del expediente", usuarioId);
     }
 
-    public SolicitudCopia rechazar(Long id, String motivo) {
+    public SolicitudCopia rechazar(Long id, String motivo, Long usuarioId) {
         String texto = motivo == null ? "" : motivo.trim();
         if (texto.isEmpty()) {
             throw new ReglaNegocioException("Indique el motivo del rechazo");
@@ -76,16 +75,13 @@ public class ValidacionService {
             throw new ReglaNegocioException("El motivo no debe pasar de " + MOTIVO_MAXIMO + " caracteres");
         }
         SolicitudCopia solicitud = enEspera(id);
-        solicitud.setValidadoPor(sesion.usuarioId());
+        solicitud.setValidadoPor(usuarioId);
         solicitud.setFechaValidacion(Formatos.ahora());
         solicitud.setMotivoRechazo(texto);
-        return historialService.cambiarEstado(solicitud, EstadoSolicitud.CANCELADO, "Rechazada: " + texto);
+        return historialService.cambiarEstado(solicitud, EstadoSolicitud.CANCELADO, "Rechazada: " + texto, usuarioId);
     }
 
-    /**
-     * INE de la solicitud. Solo la ve COPIAS_PERSONAL (la ruta lleva @PreAuthorize cuando exista Spring Security)
-     * y nunca aparece en el comprobante.
-     */
+    /** INE de la solicitud. Solo la ve COPIAS_PERSONAL (ValidacionIneServlet) y nunca aparece en el comprobante. */
     public Archivo ine(Long id) {
         SolicitudCopia solicitud = solicitudService.obtener(id);
         if (solicitud.getIneArchivoId() == null) {

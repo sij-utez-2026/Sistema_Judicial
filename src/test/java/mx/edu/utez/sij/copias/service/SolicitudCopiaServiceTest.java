@@ -24,7 +24,7 @@ class SolicitudCopiaServiceTest {
 
     @Test
     void publicaPasaDirectoAlPagoConDatosNormalizadosYEsenciales() {
-        SolicitudCopia s = p.solicitudService.registrar(CopiasPrueba.form("exp-2026-001"), null);
+        SolicitudCopia s = p.solicitudService.registrar(CopiasPrueba.form("exp-2026-001"), null, CopiasPrueba.USUARIO);
 
         assertEquals(EstadoSolicitud.LISTO_PARA_PAGO, s.getEstado());
         assertEquals(TipoExpediente.PUBLICO, s.getTipo());
@@ -34,6 +34,7 @@ class SolicitudCopiaServiceTest {
         assertEquals("Andrea Castro Ruiz", s.getSolicitanteNombre());
         assertEquals("CARA900721MZ4", s.getSolicitanteRfc());
         assertEquals("andrea@example.com", s.getSolicitanteCorreo());
+        assertEquals(CopiasPrueba.USUARIO, s.getCapturadoPor());
         assertNull(s.getIneArchivoId());
         assertTrue(s.getFolio().matches("CC-\\d{4}-[A-Z2-9]{6}"));
         assertEquals(1, p.historialService.historial(s.getId()).size());
@@ -41,17 +42,17 @@ class SolicitudCopiaServiceTest {
 
     @Test
     void publicaIgnoraLaIneAunqueLaAdjunten() {
-        SolicitudCopia s = p.solicitudService.registrar(CopiasPrueba.form("EXP-2026-003"), CopiasPrueba.ine());
+        SolicitudCopia s = p.solicitudService.registrar(CopiasPrueba.form("EXP-2026-003"), CopiasPrueba.ine(), CopiasPrueba.USUARIO);
         assertNull(s.getIneArchivoId());
     }
 
     @Test
     void privadaExigeIneYQuedaEnEsperaDeValidacion() {
         assertThrows(ReglaNegocioException.class,
-                () -> p.solicitudService.registrar(CopiasPrueba.form("EXP-2026-002"), null));
+                () -> p.solicitudService.registrar(CopiasPrueba.form("EXP-2026-002"), null, CopiasPrueba.USUARIO));
         assertEquals(0, p.solicitudService.total());
 
-        SolicitudCopia s = p.solicitudService.registrar(CopiasPrueba.form("EXP-2026-002"), CopiasPrueba.ine());
+        SolicitudCopia s = p.solicitudService.registrar(CopiasPrueba.form("EXP-2026-002"), CopiasPrueba.ine(), CopiasPrueba.USUARIO);
         assertEquals(EstadoSolicitud.EN_ESPERA_VALIDACION, s.getEstado());
         assertNotNull(s.getIneArchivoId());
     }
@@ -60,28 +61,28 @@ class SolicitudCopiaServiceTest {
     void ineSoloPdfJpgPngHasta5Mb() {
         ArchivoSubido texto = CopiasPrueba.archivo("ine.txt", 1);
         assertThrows(ReglaNegocioException.class,
-                () -> p.solicitudService.registrar(CopiasPrueba.form("EXP-2026-004"), texto));
+                () -> p.solicitudService.registrar(CopiasPrueba.form("EXP-2026-004"), texto, CopiasPrueba.USUARIO));
 
         ArchivoSubido grande = CopiasPrueba.archivo("ine.pdf", 5 * 1024 * 1024 + 1);
         assertThrows(ReglaNegocioException.class,
-                () -> p.solicitudService.registrar(CopiasPrueba.form("EXP-2026-004"), grande));
+                () -> p.solicitudService.registrar(CopiasPrueba.form("EXP-2026-004"), grande, CopiasPrueba.USUARIO));
 
         ArchivoSubido jpeg = CopiasPrueba.archivo("INE.JPEG", 1);
-        assertNotNull(p.solicitudService.registrar(CopiasPrueba.form("EXP-2026-004"), jpeg).getIneArchivoId());
+        assertNotNull(p.solicitudService.registrar(CopiasPrueba.form("EXP-2026-004"), jpeg, CopiasPrueba.USUARIO).getIneArchivoId());
     }
 
     @Test
     void expedienteInexistente() {
         ReglaNegocioException e = assertThrows(ReglaNegocioException.class,
-                () -> p.solicitudService.registrar(CopiasPrueba.form("EXP-2026-999"), null));
+                () -> p.solicitudService.registrar(CopiasPrueba.form("EXP-2026-999"), null, CopiasPrueba.USUARIO));
         assertEquals("El expediente no fue encontrado", e.getMessage());
     }
 
     @Test
     void elCostoSeCongelaConLaTarifaVigente() {
-        SolicitudCopia antes = p.solicitudService.registrar(CopiasPrueba.form("EXP-2026-001"), null);
+        SolicitudCopia antes = p.solicitudService.registrar(CopiasPrueba.form("EXP-2026-001"), null, CopiasPrueba.USUARIO);
         p.tarifaService.registrar(new BigDecimal("400.00"), LocalDate.of(2026, 2, 1), 1L);
-        SolicitudCopia despues = p.solicitudService.registrar(CopiasPrueba.form("EXP-2026-001"), null);
+        SolicitudCopia despues = p.solicitudService.registrar(CopiasPrueba.form("EXP-2026-001"), null, CopiasPrueba.USUARIO);
 
         assertEquals(new BigDecimal("320.00"), antes.getCosto());
         assertEquals(new BigDecimal("400.00"), despues.getCosto());
@@ -90,8 +91,8 @@ class SolicitudCopiaServiceTest {
 
     @Test
     void registroFiltraPorTextoYEstado() {
-        p.solicitudService.registrar(CopiasPrueba.form("EXP-2026-001"), null);
-        SolicitudCopia privada = p.solicitudService.registrar(CopiasPrueba.form("EXP-2026-002"), CopiasPrueba.ine());
+        p.solicitudService.registrar(CopiasPrueba.form("EXP-2026-001"), null, CopiasPrueba.USUARIO);
+        SolicitudCopia privada = p.solicitudService.registrar(CopiasPrueba.form("EXP-2026-002"), CopiasPrueba.ine(), CopiasPrueba.USUARIO);
 
         assertEquals(2, p.solicitudService.listar(" ", null, 0, 10).getTotalElements());
         assertEquals(1, p.solicitudService.listar(null, EstadoSolicitud.EN_ESPERA_VALIDACION, 0, 10).getTotalElements());

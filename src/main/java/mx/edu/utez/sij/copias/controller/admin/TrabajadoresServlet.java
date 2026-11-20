@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import mx.edu.utez.sij.copias.Copias;
 import mx.edu.utez.sij.copias.RolesCopias;
+import mx.edu.utez.sij.copias.sesion.UsuarioCopias;
 import mx.edu.utez.sij.copias.dto.PersonalForm;
 import mx.edu.utez.sij.copias.service.PersonalCopiasService;
 import mx.edu.utez.sij.copias.temporal.AccesoTemporal;
@@ -32,7 +33,8 @@ public class TrabajadoresServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        if (!acceso.exigirRol(request, response, RolesCopias.ADMIN)) {
+        UsuarioCopias administrador = acceso.exigirRol(request, response, RolesCopias.ADMIN);
+        if (administrador == null) {
             return;
         }
         request.setAttribute("personalForm", new PersonalForm());
@@ -41,7 +43,8 @@ public class TrabajadoresServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        if (!acceso.exigirRol(request, response, RolesCopias.ADMIN)) {
+        UsuarioCopias administrador = acceso.exigirRol(request, response, RolesCopias.ADMIN);
+        if (administrador == null) {
             return;
         }
         PersonalForm form = new PersonalForm();

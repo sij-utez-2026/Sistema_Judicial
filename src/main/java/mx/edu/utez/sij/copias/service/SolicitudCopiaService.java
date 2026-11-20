@@ -12,7 +12,6 @@ import mx.edu.utez.sij.copias.temporal.ArchivoServiceTemporal;
 import mx.edu.utez.sij.copias.temporal.ExpedienteApi;
 import mx.edu.utez.sij.copias.temporal.ExpedienteApi.ExpedienteDto;
 import mx.edu.utez.sij.copias.temporal.ReglaNegocioException;
-import mx.edu.utez.sij.copias.temporal.SesionTemporal;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -42,19 +41,16 @@ public class SolicitudCopiaService {
     private final TarifaService tarifaService;
     private final FolioService folioService;
     private final HistorialService historialService;
-    private final SesionTemporal sesion;
 
     public SolicitudCopiaService(SolicitudCopiaDao solicitudDao, ExpedienteApi expedienteApi,
                                  ArchivoServiceTemporal archivoService, TarifaService tarifaService,
-                                 FolioService folioService, HistorialService historialService,
-                                 SesionTemporal sesion) {
+                                 FolioService folioService, HistorialService historialService) {
         this.solicitudDao = solicitudDao;
         this.expedienteApi = expedienteApi;
         this.archivoService = archivoService;
         this.tarifaService = tarifaService;
         this.folioService = folioService;
         this.historialService = historialService;
-        this.sesion = sesion;
     }
 
     /** Paso 1: buscar el expediente para saber si es público o privado. */
@@ -66,8 +62,11 @@ public class SolicitudCopiaService {
                 .orElseThrow(() -> new ReglaNegocioException("El expediente no fue encontrado"));
     }
 
-    /** Paso 2: registrar la solicitud con los datos del solicitante (y la INE si es privado). */
-    public SolicitudCopia registrar(SolicitudForm form, ArchivoSubido ine) {
+    /**
+     * Paso 2: registrar la solicitud con los datos del solicitante (y la INE si es privado).
+     * usuarioId: quién la captura (lo pasa el servlet).
+     */
+    public SolicitudCopia registrar(SolicitudForm form, ArchivoSubido ine, Long usuarioId) {
         ExpedienteDto expediente = buscarExpediente(form.getNumeroExpediente());
         boolean privado = expediente.tipo() == ExpedienteApi.TipoExpediente.PRIVADO;
         Tarifa tarifa = tarifaService.vigente();
@@ -88,7 +87,7 @@ public class SolicitudCopiaService {
         // Costo congelado con la tarifa vigente
         solicitud.setTarifaId(tarifa.getId());
         solicitud.setCosto(tarifa.getMonto());
-        solicitud.setCapturadoPor(sesion.usuarioId());
+        solicitud.setCapturadoPor(usuarioId);
         solicitud.setFechaSolicitud(Formatos.ahora());
 
         if (privado) {
@@ -105,7 +104,7 @@ public class SolicitudCopiaService {
         SolicitudCopia guardada = solicitudDao.save(solicitud);
         historialService.registrarCreacion(guardada, privado
                 ? "Solicitud capturada. Debe esperar la aprobación antes de pagar"
-                : "Solicitud capturada. Expediente público: pasa directo al pago");
+                : "Solicitud capturada. Expediente público: pasa directo al pago", usuarioId);
         return guardada;
     }
 

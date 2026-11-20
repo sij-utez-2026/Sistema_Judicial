@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Part;
 import mx.edu.utez.sij.copias.Copias;
 import mx.edu.utez.sij.copias.RolesCopias;
+import mx.edu.utez.sij.copias.sesion.UsuarioCopias;
 import mx.edu.utez.sij.copias.dto.ArchivoSubido;
 import mx.edu.utez.sij.copias.dto.SolicitudForm;
 import mx.edu.utez.sij.copias.model.SolicitudCopia;
@@ -40,7 +41,8 @@ public class SolicitudNuevaServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        if (!acceso.exigirRol(request, response, RolesCopias.PERSONAL)) {
+        UsuarioCopias usuario = acceso.exigirRol(request, response, RolesCopias.PERSONAL);
+        if (usuario == null) {
             return;
         }
         String expediente = Parametros.texto(request, "expediente");
@@ -59,7 +61,8 @@ public class SolicitudNuevaServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        if (!acceso.exigirRol(request, response, RolesCopias.PERSONAL)) {
+        UsuarioCopias usuario = acceso.exigirRol(request, response, RolesCopias.PERSONAL);
+        if (usuario == null) {
             return;
         }
         SolicitudForm form = new SolicitudForm();
@@ -87,7 +90,7 @@ public class SolicitudNuevaServlet extends HttpServlet {
         }
 
         try {
-            SolicitudCopia solicitud = solicitudService.registrar(form, ine(request));
+            SolicitudCopia solicitud = solicitudService.registrar(form, ine(request), usuario.getId());
             FlashMessage.exito(request, "Solicitud registrada", solicitud.getFolio() + (solicitud.isPrivada()
                     ? " · Debe esperar la aprobación antes de pagar."
                     : " · Expediente público: lista para el pago."));

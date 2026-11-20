@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import mx.edu.utez.sij.copias.Copias;
 import mx.edu.utez.sij.copias.RolesCopias;
+import mx.edu.utez.sij.copias.sesion.UsuarioCopias;
 import mx.edu.utez.sij.copias.temporal.AccesoTemporal;
 import mx.edu.utez.sij.nucleo.web.FlashMessage;
 import mx.edu.utez.sij.nucleo.web.Vistas;
@@ -23,10 +24,11 @@ public class ColoresRestablecerServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        if (!acceso.exigirRol(request, response, RolesCopias.ADMIN)) {
+        UsuarioCopias usuario = acceso.exigirRol(request, response, RolesCopias.ADMIN);
+        if (usuario == null) {
             return;
         }
-        Copias.coloresService().restablecer();
+        Copias.coloresService().restablecer(usuario.getId());
         FlashMessage.exito(request, "Colores restablecidos", "Se volvió a la paleta institucional.");
         Vistas.redirigir(request, response, "/copias/admin/colores");
     }

@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import mx.edu.utez.sij.copias.Copias;
 import mx.edu.utez.sij.copias.RolesCopias;
+import mx.edu.utez.sij.copias.sesion.UsuarioCopias;
 import mx.edu.utez.sij.copias.model.SolicitudCopia;
 import mx.edu.utez.sij.copias.temporal.AccesoTemporal;
 import mx.edu.utez.sij.copias.temporal.ReglaNegocioException;
@@ -26,7 +27,8 @@ public class EntregaEntregarServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        if (!acceso.exigirRol(request, response, RolesCopias.PERSONAL)) {
+        UsuarioCopias usuario = acceso.exigirRol(request, response, RolesCopias.PERSONAL);
+        if (usuario == null) {
             return;
         }
         Long id = Parametros.numero(request, "id");
@@ -36,7 +38,7 @@ public class EntregaEntregarServlet extends HttpServlet {
             return;
         }
         try {
-            Copias.entregaService().entregar(id);
+            Copias.entregaService().entregar(id, usuario.getId());
             FlashMessage.exito(request, "Entrega registrada correctamente", solicitud.getFolio() + " · El folio quedó inhabilitado.");
         } catch (ReglaNegocioException e) {
             FlashMessage.error(request, e.getMessage());

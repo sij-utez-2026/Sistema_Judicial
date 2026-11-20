@@ -26,7 +26,7 @@ import mx.edu.utez.sij.copias.temporal.ArchivoServiceTemporal;
 import mx.edu.utez.sij.copias.temporal.CorreoTemporal;
 import mx.edu.utez.sij.copias.temporal.ExpedienteApi;
 import mx.edu.utez.sij.copias.temporal.ExpedienteApiTemporal;
-import mx.edu.utez.sij.copias.temporal.SesionTemporal;
+import mx.edu.utez.sij.copias.sesion.SesionCopias;
 import mx.edu.utez.sij.copias.temporal.UsuarioServiceTemporal;
 
 /**
@@ -51,31 +51,38 @@ public final class Copias {
     private static final ColorAreaDao COLOR_DAO = new ColorAreaDaoMemoria();
 
     // TEMPORAL: lo que darán el núcleo y Oficialía
-    private static final SesionTemporal SESION = new SesionTemporal();
-    private static final AccesoTemporal ACCESO = new AccesoTemporal(SESION);
     private static final ExpedienteApi EXPEDIENTE_API = new ExpedienteApiTemporal();
     private static final ArchivoServiceTemporal ARCHIVOS = new ArchivoServiceTemporal();
     private static final CorreoTemporal CORREO = new CorreoTemporal();
     private static final UsuarioServiceTemporal USUARIOS = new UsuarioServiceTemporal();
 
+    // Quién usa Copias y su permiso (ver SesionCopias)
+    private static final SesionCopias SESION = new SesionCopias(USUARIOS);
+    private static final AccesoTemporal ACCESO = new AccesoTemporal(SESION);
+
     // Services
     private static final TarifaService TARIFAS = new TarifaService(TARIFA_DAO);
     private static final FolioService FOLIOS = new FolioService(SOLICITUD_DAO);
-    private static final HistorialService HISTORIAL = new HistorialService(SOLICITUD_DAO, HISTORIAL_DAO, SESION);
-    private static final CorreoCopiasService CORREOS = new CorreoCopiasService(CORREO, CORREO_DAO, SESION);
+    private static final HistorialService HISTORIAL = new HistorialService(SOLICITUD_DAO, HISTORIAL_DAO);
+    private static final CorreoCopiasService CORREOS = new CorreoCopiasService(CORREO, CORREO_DAO);
     private static final SolicitudCopiaService SOLICITUDES = new SolicitudCopiaService(SOLICITUD_DAO, EXPEDIENTE_API,
-            ARCHIVOS, TARIFAS, FOLIOS, HISTORIAL, SESION);
+            ARCHIVOS, TARIFAS, FOLIOS, HISTORIAL);
     private static final ValidacionService VALIDACION = new ValidacionService(SOLICITUD_DAO, SOLICITUDES, HISTORIAL,
-            EXPEDIENTE_API, ARCHIVOS, SESION);
+            EXPEDIENTE_API, ARCHIVOS);
     private static final EntregaService ENTREGAS = new EntregaService(ENTREGA_DAO, SOLICITUD_DAO, SOLICITUDES,
-            HISTORIAL, CORREOS, SESION);
+            HISTORIAL, CORREOS);
     private static final PersonalCopiasService PERSONAL = new PersonalCopiasService(USUARIOS);
-    private static final ColoresCopiasService COLORES = new ColoresCopiasService(COLOR_DAO, SESION);
+    private static final ColoresCopiasService COLORES = new ColoresCopiasService(COLOR_DAO);
 
     private Copias() {
     }
 
-    public static SesionTemporal sesion() {
+    /** TEMPORAL: cuentas de prueba (las crea DatosInicialesCopias). Con el núcleo, las cuentas son de core_usuario. */
+    public static UsuarioServiceTemporal usuarios() {
+        return USUARIOS;
+    }
+
+    public static SesionCopias sesion() {
         return SESION;
     }
 

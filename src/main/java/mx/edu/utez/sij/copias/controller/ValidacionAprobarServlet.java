@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import mx.edu.utez.sij.copias.Copias;
 import mx.edu.utez.sij.copias.RolesCopias;
+import mx.edu.utez.sij.copias.sesion.UsuarioCopias;
 import mx.edu.utez.sij.copias.model.SolicitudCopia;
 import mx.edu.utez.sij.copias.temporal.AccesoTemporal;
 import mx.edu.utez.sij.copias.temporal.ReglaNegocioException;
@@ -26,7 +27,8 @@ public class ValidacionAprobarServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        if (!acceso.exigirRol(request, response, RolesCopias.PERSONAL)) {
+        UsuarioCopias usuario = acceso.exigirRol(request, response, RolesCopias.PERSONAL);
+        if (usuario == null) {
             return;
         }
         SolicitudCopia solicitud = ValidacionDetalleServlet.privada(Parametros.numero(request, "id"));
@@ -35,7 +37,7 @@ public class ValidacionAprobarServlet extends HttpServlet {
             return;
         }
         try {
-            Copias.validacionService().aprobar(solicitud.getId());
+            Copias.validacionService().aprobar(solicitud.getId(), usuario.getId());
             FlashMessage.exito(request, "Solicitud aprobada", solicitud.getFolio() + " · Ya se puede realizar el pago.");
             Vistas.redirigir(request, response, "/copias/solicitudes/detalle?id=" + solicitud.getId());
         } catch (ReglaNegocioException e) {

@@ -13,7 +13,6 @@ import mx.edu.utez.sij.copias.model.SolicitudCopia;
 import mx.edu.utez.sij.copias.temporal.ArchivoServiceTemporal;
 import mx.edu.utez.sij.copias.temporal.CorreoTemporal;
 import mx.edu.utez.sij.copias.temporal.ExpedienteApiTemporal;
-import mx.edu.utez.sij.copias.temporal.SesionTemporal;
 import mx.edu.utez.sij.copias.temporal.UsuarioServiceTemporal;
 
 import java.io.ByteArrayInputStream;
@@ -40,7 +39,9 @@ class CopiasPrueba {
         }
     }
 
-    final SesionTemporal sesion = new SesionTemporal();
+    // Id de quien hace las acciones en las pruebas (en la app lo pone el servlet con SesionCopias)
+    static final Long USUARIO = 7L;
+
     final SolicitudCopiaDaoMemoria solicitudes = new SolicitudCopiaDaoMemoria();
     final CorreoEnviadoDaoMemoria correos = new CorreoEnviadoDaoMemoria();
     final CorreoDePrueba correo = new CorreoDePrueba();
@@ -48,18 +49,18 @@ class CopiasPrueba {
     final TarifaService tarifaService = new TarifaService(new TarifaDaoMemoria());
     final FolioService folioService = new FolioService(solicitudes);
     final HistorialService historialService =
-            new HistorialService(solicitudes, new HistorialSolicitudDaoMemoria(), sesion);
+            new HistorialService(solicitudes, new HistorialSolicitudDaoMemoria());
     final ExpedienteApiTemporal expedienteApi = new ExpedienteApiTemporal();
     final ArchivoServiceTemporal archivoService = new ArchivoServiceTemporal();
     final SolicitudCopiaService solicitudService = new SolicitudCopiaService(solicitudes, expedienteApi,
-            archivoService, tarifaService, folioService, historialService, sesion);
+            archivoService, tarifaService, folioService, historialService);
     final ValidacionService validacionService = new ValidacionService(solicitudes, solicitudService,
-            historialService, expedienteApi, archivoService, sesion);
-    final CorreoCopiasService correoService = new CorreoCopiasService(correo, correos, sesion);
+            historialService, expedienteApi, archivoService);
+    final CorreoCopiasService correoService = new CorreoCopiasService(correo, correos);
     final EntregaService entregaService = new EntregaService(new EntregaDaoMemoria(), solicitudes,
-            solicitudService, historialService, correoService, sesion);
+            solicitudService, historialService, correoService);
     final PersonalCopiasService personalService = new PersonalCopiasService(new UsuarioServiceTemporal());
-    final ColoresCopiasService coloresService = new ColoresCopiasService(new ColorAreaDaoMemoria(), sesion);
+    final ColoresCopiasService coloresService = new ColoresCopiasService(new ColorAreaDaoMemoria());
 
     CopiasPrueba() {
         tarifaService.registrar(new BigDecimal("320.00"), LocalDate.of(2026, 1, 1), 1L);
@@ -85,6 +86,6 @@ class CopiasPrueba {
 
     /** La parte de pagos no está en este módulo todavía: solo se pone el estado que deja el pago. */
     void marcarPagada(SolicitudCopia solicitud) {
-        historialService.cambiarEstado(solicitud, EstadoSolicitud.PAGADO_EN_PREPARACION, "Pago de prueba");
+        historialService.cambiarEstado(solicitud, EstadoSolicitud.PAGADO_EN_PREPARACION, "Pago de prueba", USUARIO);
     }
 }

@@ -46,10 +46,10 @@ class AdminCopiasServiceTest {
 
         ColoresForm form = p.coloresService.formulario();
         form.setBotones("#00ff00");
-        p.coloresService.guardar(form);
+        p.coloresService.guardar(form, CopiasPrueba.USUARIO);
         assertEquals("#00FF00", p.coloresService.actuales().get(ColoresCopiasService.BOTONES));
 
-        p.coloresService.restablecer();
+        p.coloresService.restablecer(CopiasPrueba.USUARIO);
         assertEquals("#651747", p.coloresService.actuales().get(ColoresCopiasService.BOTONES));
     }
 
@@ -58,6 +58,6 @@ class AdminCopiasServiceTest {
         ColoresForm form = p.coloresService.formulario();
         // Evita que se cuele CSS dentro de la etiqueta <style>
         form.setPrimario("red;}body{display:none");
-        assertThrows(ReglaNegocioException.class, () -> p.coloresService.guardar(form));
+        assertThrows(ReglaNegocioException.class, () -> p.coloresService.guardar(form, CopiasPrueba.USUARIO));
     }
 }

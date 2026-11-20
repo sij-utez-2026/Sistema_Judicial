@@ -8,7 +8,6 @@ import mx.edu.utez.sij.copias.model.SolicitudCopia;
 import mx.edu.utez.sij.copias.dao.EntregaDao;
 import mx.edu.utez.sij.copias.dao.SolicitudCopiaDao;
 import mx.edu.utez.sij.copias.temporal.ReglaNegocioException;
-import mx.edu.utez.sij.copias.temporal.SesionTemporal;
 
 import java.util.List;
 import java.util.Optional;
@@ -30,17 +29,15 @@ public class EntregaService {
     private final SolicitudCopiaService solicitudService;
     private final HistorialService historialService;
     private final CorreoCopiasService correoService;
-    private final SesionTemporal sesion;
 
     public EntregaService(EntregaDao entregaDao, SolicitudCopiaDao solicitudDao,
                           SolicitudCopiaService solicitudService, HistorialService historialService,
-                          CorreoCopiasService correoService, SesionTemporal sesion) {
+                          CorreoCopiasService correoService) {
         this.entregaDao = entregaDao;
         this.solicitudDao = solicitudDao;
         this.solicitudService = solicitudService;
         this.historialService = historialService;
         this.correoService = correoService;
-        this.sesion = sesion;
     }
 
     /** Pagadas que falta entregar, las más antiguas primero. */
@@ -49,30 +46,30 @@ public class EntregaService {
     }
 
     /** Avisa por correo que la copia ya está lista. Se puede repetir si el solicitante no lo recibió. */
-    public CorreoEnviado avisarListaParaRecoger(Long solicitudId) {
+    public CorreoEnviado avisarListaParaRecoger(Long solicitudId, Long usuarioId) {
         SolicitudCopia solicitud = pendienteDeEntrega(solicitudId);
-        CorreoEnviado correo = correoService.enviarListaParaRecoger(solicitud);
+        CorreoEnviado correo = correoService.enviarListaParaRecoger(solicitud, usuarioId);
         if (!correo.isExito()) {
             throw new ReglaNegocioException("No se pudo enviar el correo. Intente de nuevo");
         }
         if (solicitud.getEstado() == EstadoSolicitud.PAGADO_EN_PREPARACION) {
             historialService.cambiarEstado(solicitud, EstadoSolicitud.LISTO_PARA_RECOGER,
-                    "Aviso enviado a " + solicitud.getSolicitanteCorreo());
+                    "Aviso enviado a " + solicitud.getSolicitanteCorreo(), usuarioId);
         }
         return correo;
     }
 
-    /** Registra la entrega física de la copia impresa. */
-    public Entrega entregar(Long solicitudId) {
+    /** Registra la entrega física de la copia impresa. usuarioId: quién entrega (lo pasa el servlet). */
+    public Entrega entregar(Long solicitudId, Long usuarioId) {
         SolicitudCopia solicitud = pendienteDeEntrega(solicitudId);
 
         Entrega entrega = new Entrega();
         entrega.setSolicitudId(solicitud.getId());
-        entrega.setEntregadoPor(sesion.usuarioId());
+        entrega.setEntregadoPor(usuarioId);
         entrega.setFecha(Formatos.ahora());
         Entrega guardada = entregaDao.save(entrega);
 
-        historialService.cambiarEstado(solicitud, EstadoSolicitud.ENTREGADO, "Copia impresa y entregada en ventanilla");
+        historialService.cambiarEstado(solicitud, EstadoSolicitud.ENTREGADO, "Copia impresa y entregada en ventanilla", usuarioId);
         return guardada;
     }
 

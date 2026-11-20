@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import mx.edu.utez.sij.copias.Copias;
 import mx.edu.utez.sij.copias.RolesCopias;
+import mx.edu.utez.sij.copias.sesion.UsuarioCopias;
 import mx.edu.utez.sij.copias.temporal.AccesoTemporal;
 import mx.edu.utez.sij.copias.temporal.ReglaNegocioException;
 import mx.edu.utez.sij.copias.temporal.UsuarioServiceTemporal.Usuario;
@@ -26,7 +27,8 @@ public class TrabajadorEstadoServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        if (!acceso.exigirRol(request, response, RolesCopias.ADMIN)) {
+        UsuarioCopias administrador = acceso.exigirRol(request, response, RolesCopias.ADMIN);
+        if (administrador == null) {
             return;
         }
         Long id = Parametros.numero(request, "id");

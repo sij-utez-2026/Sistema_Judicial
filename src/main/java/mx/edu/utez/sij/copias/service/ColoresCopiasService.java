@@ -5,7 +5,6 @@ import mx.edu.utez.sij.copias.model.ColorArea;
 import mx.edu.utez.sij.copias.model.Formatos;
 import mx.edu.utez.sij.copias.dao.ColorAreaDao;
 import mx.edu.utez.sij.copias.temporal.ReglaNegocioException;
-import mx.edu.utez.sij.copias.temporal.SesionTemporal;
 
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -38,11 +37,9 @@ public class ColoresCopiasService {
     }
 
     private final ColorAreaDao colorDao;
-    private final SesionTemporal sesion;
 
-    public ColoresCopiasService(ColorAreaDao colorDao, SesionTemporal sesion) {
+    public ColoresCopiasService(ColorAreaDao colorDao) {
         this.colorDao = colorDao;
-        this.sesion = sesion;
     }
 
     /** Colores actuales (los guardados o, si no hay, los iniciales), en orden fijo. */
@@ -68,17 +65,18 @@ public class ColoresCopiasService {
         return aFormulario(INICIALES);
     }
 
-    public void guardar(ColoresForm form) {
-        guardarColor(PRIMARIO, form.getPrimario());
-        guardarColor(TITULOS, form.getTitulos());
-        guardarColor(BOTONES, form.getBotones());
-        guardarColor(ACENTO, form.getAcento());
-        guardarColor(BORDES, form.getBordes());
-        guardarColor(AVISOS, form.getAvisos());
+    /** usuarioId: el administrador que hace el cambio (lo pasa el servlet). */
+    public void guardar(ColoresForm form, Long usuarioId) {
+        guardarColor(PRIMARIO, form.getPrimario(), usuarioId);
+        guardarColor(TITULOS, form.getTitulos(), usuarioId);
+        guardarColor(BOTONES, form.getBotones(), usuarioId);
+        guardarColor(ACENTO, form.getAcento(), usuarioId);
+        guardarColor(BORDES, form.getBordes(), usuarioId);
+        guardarColor(AVISOS, form.getAvisos(), usuarioId);
     }
 
-    public void restablecer() {
-        INICIALES.forEach(this::guardarColor);
+    public void restablecer(Long usuarioId) {
+        INICIALES.forEach((variable, valor) -> guardarColor(variable, valor, usuarioId));
     }
 
     private ColoresForm aFormulario(Map<String, String> colores) {
@@ -92,7 +90,7 @@ public class ColoresCopiasService {
         return form;
     }
 
-    private void guardarColor(String variable, String valor) {
+    private void guardarColor(String variable, String valor, Long usuarioId) {
         // También se revisa aquí: el valor se escribe dentro de una etiqueta <style>
         if (valor == null || !valor.matches("^#[0-9A-Fa-f]{6}$")) {
             throw new ReglaNegocioException("Use un color con formato #RRGGBB");
@@ -100,7 +98,7 @@ public class ColoresCopiasService {
         ColorArea color = colorDao.findByVariable(variable).orElseGet(ColorArea::new);
         color.setVariable(variable);
         color.setValor(valor.toUpperCase(Locale.ROOT));
-        color.setActualizadoPor(sesion.usuarioId());
+        color.setActualizadoPor(usuarioId);
         color.setActualizadoEn(Formatos.ahora());
         colorDao.save(color);
     }
