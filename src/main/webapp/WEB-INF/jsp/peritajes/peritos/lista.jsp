@@ -18,6 +18,16 @@
             <a class="btn btn-primary" href="<c:url value='/peritajes/peritos/nuevo'/>">+ Registrar perito</a>
         </n:encabezado>
 
+        <%-- RF 3.1 (M2): contraseña temporal del perito recién registrado. Solo llega una vez (FlashMessage). --%>
+        <c:if test="${not empty contrasenaTemporal}">
+            <div class="sij-aviso sij-aviso-advertencia p-3 mt-3">
+                <div class="fw-semibold">Contraseña temporal de <c:out value="${correoNuevo}"/></div>
+                <div class="fs-5 font-monospace my-1"><c:out value="${contrasenaTemporal}"/></div>
+                Entréguela al perito para su primer inicio de sesión. No se volverá a mostrar; el perito puede
+                cambiarla en "Cambiar contraseña".
+            </div>
+        </c:if>
+
         <div class="d-flex flex-wrap gap-2 my-3">
             <span class="sij-contador">&bull; <c:out value="${totalRegistrados}"/> Registrados</span>
             <span class="sij-contador">&bull; <c:out value="${totalActivos}"/> Activos</span>
@@ -43,10 +53,10 @@
                 </select>
             </div>
             <div class="col-lg-3 col-md-6">
-                <select class="form-select" name="materiaId" aria-label="Materia" data-autoenvio>
+                <select class="form-select" name="materia" aria-label="Materia" data-autoenvio>
                     <option value="">Materia: Todas</option>
                     <c:forEach var="m" items="${materias}">
-                        <option value="<c:out value='${m.id}'/>"${m.id eq materiaId ? ' selected' : ''}><c:out value="${m.nombre}"/></option>
+                        <option value="<c:out value='${m.clave}'/>"${m.clave eq materia ? ' selected' : ''}><c:out value="${m.nombre}"/></option>
                     </c:forEach>
                 </select>
             </div>
@@ -88,18 +98,17 @@
                             </thead>
                             <tbody>
                             <c:forEach var="p" items="${pagina.content}">
-                                <c:set var="carga" value="${cargaPorPerito[p.id]}"/>
                                 <tr>
                                     <td>
                                         <div class="fw-semibold"><c:out value="${p.nombreCompleto}"/></div>
-                                        <div class="sij-texto-chico"><c:out value="${p.numeroRegistro}"/></div>
+                                        <div class="sij-texto-chico"><c:out value="${p.numeroRegistro}"/> · <c:out value="${p.rol}"/></div>
                                     </td>
-                                    <td><c:out value="${materiasPorPerito[p.id]}"/></td>
+                                    <td><c:out value="${p.materiasTexto}"/></td>
                                     <td><n:estado valor="${p.activo ? 'Activo' : 'Inactivo'}"/></td>
                                     <td>
-                                        <div class="fw-semibold fs-5"><c:out value="${carga.total()}"/></div>
+                                        <div class="fw-semibold fs-5"><c:out value="${p.cargaTotal}"/></div>
                                         <div class="sij-texto-chico">
-                                            <c:out value="${carga.asignados()}"/> Asig. · <c:out value="${carga.enProceso()}"/> Proc.
+                                            <c:out value="${p.cargaAsignados}"/> Asig. · <c:out value="${p.cargaEnProceso}"/> Proc.
                                         </div>
                                     </td>
                                     <td class="text-end">
@@ -122,7 +131,7 @@
                 <form class="d-flex align-items-center gap-2" method="get" action="<c:url value='/peritajes/peritos'/>">
                     <input type="hidden" name="q" value="<c:out value='${q}'/>">
                     <input type="hidden" name="especialidad" value="<c:out value='${especialidad}'/>">
-                    <input type="hidden" name="materiaId" value="<c:out value='${materiaId}'/>">
+                    <input type="hidden" name="materia" value="<c:out value='${materia}'/>">
                     <input type="hidden" name="estado" value="<c:out value='${estado}'/>">
                     <label for="size" class="sij-texto-chico text-nowrap">Registros por página</label>
                     <select id="size" name="size" class="form-select form-select-sm w-auto" data-autoenvio>
