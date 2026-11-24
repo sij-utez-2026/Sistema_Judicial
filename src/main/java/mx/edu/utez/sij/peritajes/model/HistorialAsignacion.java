@@ -1,34 +1,35 @@
 package mx.edu.utez.sij.peritajes.model;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
-// Cada asignación o reasignación de un peritaje (tabla per_historial_asignacion, peritajes.md sección 4).
-// candidatos: los peritos elegibles y su carga en ese momento ("Fundamento de asignación automática").
-// [Propuesta] En la base de datos sería una tabla hija per_historial_candidato (historial_id, perito_id, carga_previa).
+// Cada asignación o reasignación de un peritaje (tabla asignacion_Per).
+// Sin perito saliente = asignación automática del sistema (RF 2.2); con perito saliente = reasignación manual (RF 2.3).
+// En la manual, id_usuario_cambio es quien la hizo; NULL = el administrador general (no está en user_Per).
 public class HistorialAsignacion {
 
     private Long id;
     private Long peritajeId;
-    private Long peritoAnteriorId;        // null en la asignación automática
-    private Long peritoNuevoId;
-    private TipoAsignacion tipo;
+    private Long peritoAnteriorId;        // id_perito_saliente; null en la asignación automática
+    private Long peritoNuevoId;           // id_perito_asignado
+    private Long realizadoPorId;          // id_usuario_cambio; null = el sistema
     private String motivo;                // obligatorio en la manual (RF 2.3)
-    private String realizadoPor;          // TODO núcleo: usuario_id de core_usuario
     private LocalDateTime fecha;
-    private List<CandidatoAsignacion> candidatos = new ArrayList<>();
 
-    // Campos de solo lectura que llena HistorialAsignacionDao para la pantalla de detalle
+    // Nombres (los llena HistorialAsignacionDao)
     private String peritoAnteriorNombre;
     private String peritoNuevoNombre;
+    private String realizadoPor;
 
     public String getFechaTexto() {
         return FormatoFecha.fechaHora(fecha);
     }
 
     public boolean isAutomatica() {
-        return tipo == TipoAsignacion.AUTOMATICA;
+        return peritoAnteriorId == null;
+    }
+
+    public TipoAsignacion getTipo() {
+        return isAutomatica() ? TipoAsignacion.AUTOMATICA : TipoAsignacion.MANUAL;
     }
 
     public Long getId() {
@@ -63,12 +64,12 @@ public class HistorialAsignacion {
         this.peritoNuevoId = peritoNuevoId;
     }
 
-    public TipoAsignacion getTipo() {
-        return tipo;
+    public Long getRealizadoPorId() {
+        return realizadoPorId;
     }
 
-    public void setTipo(TipoAsignacion tipo) {
-        this.tipo = tipo;
+    public void setRealizadoPorId(Long realizadoPorId) {
+        this.realizadoPorId = realizadoPorId;
     }
 
     public String getMotivo() {
@@ -79,28 +80,12 @@ public class HistorialAsignacion {
         this.motivo = motivo;
     }
 
-    public String getRealizadoPor() {
-        return realizadoPor;
-    }
-
-    public void setRealizadoPor(String realizadoPor) {
-        this.realizadoPor = realizadoPor;
-    }
-
     public LocalDateTime getFecha() {
         return fecha;
     }
 
     public void setFecha(LocalDateTime fecha) {
         this.fecha = fecha;
-    }
-
-    public List<CandidatoAsignacion> getCandidatos() {
-        return candidatos;
-    }
-
-    public void setCandidatos(List<CandidatoAsignacion> candidatos) {
-        this.candidatos = candidatos;
     }
 
     public String getPeritoAnteriorNombre() {
@@ -117,5 +102,13 @@ public class HistorialAsignacion {
 
     public void setPeritoNuevoNombre(String peritoNuevoNombre) {
         this.peritoNuevoNombre = peritoNuevoNombre;
+    }
+
+    public String getRealizadoPor() {
+        return realizadoPor;
+    }
+
+    public void setRealizadoPor(String realizadoPor) {
+        this.realizadoPor = realizadoPor;
     }
 }

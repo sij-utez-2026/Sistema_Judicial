@@ -1,19 +1,18 @@
 package mx.edu.utez.sij.peritajes.model;
 
-// Materia del catálogo judicial (Civil, Familiar...). El catálogo es de Oficialía (docs/CONTRATOS.md 3.1);
-// mientras no exista CatalogoJudicialApi, MateriaDao tiene las materias de prueba.
+// Materia del catálogo judicial de Oficialía (tabla materia_Ofc): clave (CIV, FAM...) y nombre (Civil, Familiar...).
 public class Materia {
 
-    private final Long id;
+    private final String clave;
     private final String nombre;
 
-    public Materia(Long id, String nombre) {
-        this.id = id;
+    public Materia(String clave, String nombre) {
+        this.clave = clave;
         this.nombre = nombre;
     }
 
-    public Long getId() {
-        return id;
+    public String getClave() {
+        return clave;
     }
 
     public String getNombre() {

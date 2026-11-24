@@ -2,13 +2,14 @@
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <%@ taglib prefix="t" tagdir="/WEB-INF/tags" %>
 <%@ taglib prefix="n" tagdir="/WEB-INF/tags/nucleo" %>
-<%-- Inicio del sistema (/): una tarjeta por módulo. INTEGRADORES. --%>
+<%-- Inicio del sistema (/): una tarjeta por módulo. Solo la ve el administrador general (los demás roles
+     van directo a su módulo, ver InicioServlet). INTEGRADORES. --%>
 <t:layout titulo="Inicio" seccion="inicio-sistema">
     <n:migas>Módulos del sistema</n:migas>
     <n:encabezado titulo="Sistema Judicial Integral"
                   descripcion="Elija el módulo en el que va a trabajar."/>
 
-    <%-- TODO núcleo: con el login solo aparecen los módulos de los roles del usuario --%>
+    <%-- modulosSistema: solo los módulos a los que puede entrar (FiltroNucleo) --%>
     <div class="row g-3 mt-1">
         <c:forEach var="m" items="${modulosSistema}">
             <div class="col-md-6 col-xl-4">

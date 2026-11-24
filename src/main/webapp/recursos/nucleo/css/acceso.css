@@ -1,0 +1,182 @@
+/*
+ * Inicio de sesión y recuperación de contraseña (layout-acceso.tag). INTEGRADORES.
+ * Diseño "Acceso institucional" y "Recuperación de contraseña" (docs/modulos/img.png):
+ * panel verde con el emblema a la izquierda y el formulario sobre fondo crema a la derecha.
+ * En pantallas chicas el panel queda arriba y más bajo.
+ * Usa los colores de estilos.css (se carga antes que este archivo).
+ */
+
+.sij-acceso {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* ---------- Panel institucional ---------- */
+.sij-acceso-panel {
+    background: var(--sij-primario);
+    color: #fff;
+    flex: 0 0 42%;
+    max-width: 560px;
+    display: flex;
+    flex-direction: column;
+    padding: 3rem 2.5rem 2rem;
+}
+
+.sij-acceso-centro {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.sij-acceso-emblema {
+    width: min(62%, 300px);
+    aspect-ratio: 1 / 1;
+    background: #f7f3e9;
+    color: #3b3b35;
+    border: 1px solid #d9c9a0;
+    border-radius: .6rem;
+    box-shadow: 0 .5rem 1.5rem rgba(0, 0, 0, .25);
+    font-size: .8rem;
+    line-height: 1.35;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.sij-acceso-siglas {
+    font-size: 2.25rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    margin-top: 1.5rem;
+}
+
+.sij-acceso-linea {
+    width: 78%;
+    height: 1px;
+    background: #9fd4bd;
+    margin: .9rem auto 1rem;
+}
+
+.sij-acceso-institucion {
+    font-size: .95rem;
+    font-weight: 600;
+}
+
+.sij-acceso-pie {
+    font-size: .72rem;
+    line-height: 1.6;
+}
+
+.sij-acceso-pie div:first-child {
+    color: #b9cdbf;
+}
+
+/* ---------- Formulario ---------- */
+.sij-acceso-formulario {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem;
+    background: var(--sij-fondo);
+}
+
+.sij-acceso-caja {
+    width: 100%;
+    max-width: 380px;
+}
+
+.sij-acceso-titulo {
+    font-size: 1.6rem;
+    font-weight: 600;
+    margin-bottom: 1.25rem;
+}
+
+.sij-acceso .form-label {
+    font-size: .8rem;
+    font-weight: 600;
+    margin-bottom: .35rem;
+}
+
+.sij-acceso .form-control {
+    background-color: #fff;
+    border: 1px solid var(--sij-borde);
+    border-radius: .4rem;
+    font-size: .9rem;
+    padding: .55rem .75rem;
+}
+
+.sij-acceso .form-control::placeholder {
+    color: #a3a39b;
+}
+
+.sij-acceso .form-control:focus {
+    border-color: var(--sij-acento);
+    box-shadow: 0 0 0 .2rem rgba(201, 165, 74, .2);
+}
+
+/* Enlaces "¿Olvidó su contraseña?" y "Volver al inicio de sesión" */
+.sij-acceso-enlace {
+    display: inline-block;
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--sij-texto);
+    text-decoration: none;
+}
+
+.sij-acceso-enlace:hover,
+.sij-acceso-enlace:focus-visible {
+    color: var(--sij-primario);
+    text-decoration: underline;
+}
+
+.sij-acceso .btn-primary {
+    font-size: .85rem;
+    padding: .5rem 1.1rem;
+    border-radius: .4rem;
+}
+
+.sij-acceso-descripcion {
+    color: var(--sij-texto-suave);
+    font-size: .85rem;
+}
+
+/* Aviso "Solicitud recibida" de la recuperación */
+.sij-acceso-aviso {
+    background: var(--sij-primario-claro);
+    border: 1px solid #cfe0d3;
+    border-radius: .5rem;
+    padding: .9rem 1rem;
+    font-size: .85rem;
+}
+
+/* ---------- Pantallas chicas: el panel arriba ---------- */
+@media (max-width: 767.98px) {
+    .sij-acceso {
+        flex-direction: column;
+    }
+
+    .sij-acceso-panel {
+        flex: none;
+        max-width: none;
+        padding: 1.5rem;
+    }
+
+    .sij-acceso-emblema {
+        width: 110px;
+        font-size: .65rem;
+    }
+
+    .sij-acceso-siglas {
+        font-size: 1.6rem;
+        margin-top: 1rem;
+    }
+
+    .sij-acceso-pie {
+        display: none;
+    }
+}

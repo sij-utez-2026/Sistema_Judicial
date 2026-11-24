@@ -1,32 +1,45 @@
 package mx.edu.utez.sij.peritajes.model;
 
 import java.time.LocalDateTime;
-import java.util.LinkedHashSet;
-import java.util.Set;
 
-// Solicitud de peritaje que llega de Audiencias (RF 2.1) y su seguimiento hasta el dictamen.
-// Tabla per_peritaje (docs/modulos/peritajes.md, sección 4). numeroExpediente y audienciaId son de otros módulos.
+// Peritaje (tabla peritaje_Per): atiende una solicitud de Audiencias (solicitud_perito_Aud) hasta el dictamen.
+// La demanda y la materia salen de la solicitud; el perito, de la asignación vigente (asignacion_Per).
+// El folio del peritaje es su id (decisión del equipo).
 public class Peritaje {
 
     private Long id;
-    private String folio;                 // SGPJ-AAAA-NNNN, lo genera el sistema
-    private String numeroExpediente;      // de Oficialía; se repite si el expediente pide varios peritajes
-    private Long audienciaId;             // de Audiencias
-    private Set<Long> materiasIds = new LinkedHashSet<>();
-    private String observaciones;         // texto de la solicitud de intervención
+    private Long solicitudId;             // id_solicitud_perito (Audiencias)
     private EstadoPeritaje estado;
-    private Long peritoId;
-    private LocalDateTime fechaSolicitud;
-    private LocalDateTime fechaAsignacion;
+    private LocalDateTime fechaSolicitud; // fecha_creacion
     private LocalDateTime fechaApertura;  // primera vez que el perito abre el expediente (RF 4.2)
     private LocalDateTime fechaEntrega;
     private LocalDateTime fechaCancelacion;
 
-    // Campos de solo lectura que llena PeritajeDao para las pantallas
+    // De la solicitud y la demanda (solo lectura)
+    private String folioDemanda;
+    private String numeroExpediente;      // null si la demanda aún no tiene expediente
+    private String claveMateria;
+    private String materia;               // nombre: "Civil"
+    private String descripcionDemanda;
     private String juzgado;
-    private String materiasTexto;         // "Civil · Familiar"
+
+    // De la asignación vigente (solo lectura)
+    private Long peritoId;
     private String peritoNombre;
     private String especialidadesPerito;  // "Contabilidad, Auditoría"
+    private LocalDateTime fechaAsignacion;
+
+    public String getFolio() {
+        return id == null ? "" : String.valueOf(id);
+    }
+
+    // "Exp. 438/2026" o, si no hay expediente, "Demanda PER-PRB-0438"
+    public String getReferenciaDemanda() {
+        if (numeroExpediente != null && !numeroExpediente.isBlank()) {
+            return "Exp. " + numeroExpediente;
+        }
+        return "Demanda " + folioDemanda;
+    }
 
     public String getFechaSolicitudTexto() {
         return FormatoFecha.fechaHora(fechaSolicitud);
@@ -44,6 +57,10 @@ public class Peritaje {
         return FormatoFecha.fechaHoraSegundos(fechaEntrega);
     }
 
+    public String getPeritoNombreTexto() {
+        return peritoNombre == null ? "Sin asignar" : peritoNombre;
+    }
+
     public Long getId() {
         return id;
     }
@@ -52,44 +69,12 @@ public class Peritaje {
         this.id = id;
     }
 
-    public String getFolio() {
-        return folio;
+    public Long getSolicitudId() {
+        return solicitudId;
     }
 
-    public void setFolio(String folio) {
-        this.folio = folio;
-    }
-
-    public String getNumeroExpediente() {
-        return numeroExpediente;
-    }
-
-    public void setNumeroExpediente(String numeroExpediente) {
-        this.numeroExpediente = numeroExpediente;
-    }
-
-    public Long getAudienciaId() {
-        return audienciaId;
-    }
-
-    public void setAudienciaId(Long audienciaId) {
-        this.audienciaId = audienciaId;
-    }
-
-    public Set<Long> getMateriasIds() {
-        return materiasIds;
-    }
-
-    public void setMateriasIds(Set<Long> materiasIds) {
-        this.materiasIds = materiasIds;
-    }
-
-    public String getObservaciones() {
-        return observaciones;
-    }
-
-    public void setObservaciones(String observaciones) {
-        this.observaciones = observaciones;
+    public void setSolicitudId(Long solicitudId) {
+        this.solicitudId = solicitudId;
     }
 
     public EstadoPeritaje getEstado() {
@@ -100,28 +85,12 @@ public class Peritaje {
         this.estado = estado;
     }
 
-    public Long getPeritoId() {
-        return peritoId;
-    }
-
-    public void setPeritoId(Long peritoId) {
-        this.peritoId = peritoId;
-    }
-
     public LocalDateTime getFechaSolicitud() {
         return fechaSolicitud;
     }
 
     public void setFechaSolicitud(LocalDateTime fechaSolicitud) {
         this.fechaSolicitud = fechaSolicitud;
-    }
-
-    public LocalDateTime getFechaAsignacion() {
-        return fechaAsignacion;
-    }
-
-    public void setFechaAsignacion(LocalDateTime fechaAsignacion) {
-        this.fechaAsignacion = fechaAsignacion;
     }
 
     public LocalDateTime getFechaApertura() {
@@ -148,6 +117,46 @@ public class Peritaje {
         this.fechaCancelacion = fechaCancelacion;
     }
 
+    public String getFolioDemanda() {
+        return folioDemanda;
+    }
+
+    public void setFolioDemanda(String folioDemanda) {
+        this.folioDemanda = folioDemanda;
+    }
+
+    public String getNumeroExpediente() {
+        return numeroExpediente;
+    }
+
+    public void setNumeroExpediente(String numeroExpediente) {
+        this.numeroExpediente = numeroExpediente;
+    }
+
+    public String getClaveMateria() {
+        return claveMateria;
+    }
+
+    public void setClaveMateria(String claveMateria) {
+        this.claveMateria = claveMateria;
+    }
+
+    public String getMateria() {
+        return materia;
+    }
+
+    public void setMateria(String materia) {
+        this.materia = materia;
+    }
+
+    public String getDescripcionDemanda() {
+        return descripcionDemanda;
+    }
+
+    public void setDescripcionDemanda(String descripcionDemanda) {
+        this.descripcionDemanda = descripcionDemanda;
+    }
+
     public String getJuzgado() {
         return juzgado;
     }
@@ -156,12 +165,12 @@ public class Peritaje {
         this.juzgado = juzgado;
     }
 
-    public String getMateriasTexto() {
-        return materiasTexto;
+    public Long getPeritoId() {
+        return peritoId;
     }
 
-    public void setMateriasTexto(String materiasTexto) {
-        this.materiasTexto = materiasTexto;
+    public void setPeritoId(Long peritoId) {
+        this.peritoId = peritoId;
     }
 
     public String getPeritoNombre() {
@@ -178,5 +187,13 @@ public class Peritaje {
 
     public void setEspecialidadesPerito(String especialidadesPerito) {
         this.especialidadesPerito = especialidadesPerito;
+    }
+
+    public LocalDateTime getFechaAsignacion() {
+        return fechaAsignacion;
+    }
+
+    public void setFechaAsignacion(LocalDateTime fechaAsignacion) {
+        this.fechaAsignacion = fechaAsignacion;
     }
 }

@@ -1,21 +1,21 @@
 package mx.edu.utez.sij.peritajes.model;
 
-// Un documento del expediente: nombre y detalle ("4 páginas · 1.2 MB")
+// Un documento anexo de la demanda (tabla documento_Ofc de Oficialía)
 public class DocumentoExpediente {
 
+    private final Long id;
     private final String nombre;
-    private final String detalle;
 
-    public DocumentoExpediente(String nombre, String detalle) {
+    public DocumentoExpediente(Long id, String nombre) {
+        this.id = id;
         this.nombre = nombre;
-        this.detalle = detalle;
+    }
+
+    public Long getId() {
+        return id;
     }
 
     public String getNombre() {
         return nombre;
-    }
-
-    public String getDetalle() {
-        return detalle;
     }
 }
