@@ -4,20 +4,25 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+// Dictamen del peritaje (tabla dictamen_Per; uno por peritaje). Si el peritaje se reasigna,
+// el perito nuevo sigue con el mismo borrador (decisión del equipo).
 public class Dictamen {
 
     private Long id;
     private Long peritajeId;
-    private Long peritoId;
     private String contenido = "";      // HTML del editor (Quill)
-    private EstadoDictamen estado = EstadoDictamen.BORRADOR;
-    private int version;
+    private boolean finalizado;         // es_finalizado
+    private int version;                // cada guardado suma 1 (autoguardado, RF 4.3)
     private LocalDateTime actualizadoEn;
-    private LocalDateTime finalizadoEn;
     private List<ArchivoDictamen> archivos = new ArrayList<>();
 
     public boolean isBorrador() {
-        return estado == EstadoDictamen.BORRADOR;
+        return !finalizado;
+    }
+
+    // version 0 = todavía no se ha guardado nada
+    public boolean isGuardado() {
+        return version > 0;
     }
 
     public String getActualizadoEnHora() {
@@ -44,14 +49,6 @@ public class Dictamen {
         this.peritajeId = peritajeId;
     }
 
-    public Long getPeritoId() {
-        return peritoId;
-    }
-
-    public void setPeritoId(Long peritoId) {
-        this.peritoId = peritoId;
-    }
-
     public String getContenido() {
         return contenido;
     }
@@ -60,12 +57,12 @@ public class Dictamen {
         this.contenido = contenido;
     }
 
-    public EstadoDictamen getEstado() {
-        return estado;
+    public boolean isFinalizado() {
+        return finalizado;
     }
 
-    public void setEstado(EstadoDictamen estado) {
-        this.estado = estado;
+    public void setFinalizado(boolean finalizado) {
+        this.finalizado = finalizado;
     }
 
     public int getVersion() {
@@ -82,14 +79,6 @@ public class Dictamen {
 
     public void setActualizadoEn(LocalDateTime actualizadoEn) {
         this.actualizadoEn = actualizadoEn;
-    }
-
-    public LocalDateTime getFinalizadoEn() {
-        return finalizadoEn;
-    }
-
-    public void setFinalizadoEn(LocalDateTime finalizadoEn) {
-        this.finalizadoEn = finalizadoEn;
     }
 
     public List<ArchivoDictamen> getArchivos() {

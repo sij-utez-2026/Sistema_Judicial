@@ -15,9 +15,9 @@ import mx.edu.utez.sij.peritajes.model.dao.PeritoDao;
 import java.io.IOException;
 
 // RF 3.2 Catálogo de peritos, con filtros y paginación.
-// URL: GET /peritajes/peritos?q=&especialidad=&materiaId=&estado=activo|inactivo&page=0&size=25
+// URL: GET /peritajes/peritos?q=&especialidad=&materia=CIV&estado=activo|inactivo&page=0&size=25
 // Vista: WEB-INF/jsp/peritajes/peritos/lista.jsp
-// Permiso: PERITAJES_ADMIN y PERITAJES_PERITO_ADMIN (hoy con el usuario de "Ver como", PeritajesAuth).
+// Permiso: PERITAJES_ADMIN y PERITAJES_PERITO_ADMIN.
 @WebServlet("/peritajes/peritos")
 public class PeritoListarServlet extends HttpServlet {
 
@@ -27,11 +27,11 @@ public class PeritoListarServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         if (PeritajesAuth.exigirAdministrador(request, response) == null) {
-            return;                                     // ya respondió 403
+            return;                                     // ya mandó al login o respondió 403
         }
         String q = Parametros.texto(request, "q");
         String especialidad = Parametros.texto(request, "especialidad");
-        Long materiaId = Parametros.numero(request, "materiaId");
+        String materia = Parametros.texto(request, "materia");
         String estado = Parametros.texto(request, "estado");
         int page = Parametros.entero(request, "page", 0);
         int size = Parametros.entero(request, "size", PeritoDao.TAMANO_PAGINA);
@@ -45,7 +45,7 @@ public class PeritoListarServlet extends HttpServlet {
         }
 
         // Cada perito ya trae sus materias y su carga activa (materiasTexto, cargaAsignados, cargaEnProceso)
-        Pagina<Perito> pagina = dao.buscar(q, especialidad, materiaId, activo, page, size);
+        Pagina<Perito> pagina = dao.buscar(q, especialidad, materia, activo, page, size);
 
         request.setAttribute("pagina", pagina);
         request.setAttribute("totalRegistrados", dao.contar());
@@ -58,10 +58,10 @@ public class PeritoListarServlet extends HttpServlet {
         // Filtros actuales, para mantenerlos en el formulario y en la paginación
         request.setAttribute("q", q);
         request.setAttribute("especialidad", especialidad);
-        request.setAttribute("materiaId", materiaId);
+        request.setAttribute("materia", materia);
         request.setAttribute("estado", estado);
         request.setAttribute("size", pagina.getSize());
-        request.setAttribute("hayFiltros", q != null || especialidad != null || materiaId != null || activo != null);
+        request.setAttribute("hayFiltros", q != null || especialidad != null || materia != null || activo != null);
 
         Vistas.mostrar(request, response, "peritajes/peritos/lista");
     }

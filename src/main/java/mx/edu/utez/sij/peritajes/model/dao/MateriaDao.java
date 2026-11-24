@@ -1,55 +1,40 @@
 package mx.edu.utez.sij.peritajes.model.dao;
 
+import mx.edu.utez.sij.nucleo.bd.ConexionBD;
 import mx.edu.utez.sij.peritajes.model.Materia;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
-// TEMPORAL: materias de prueba mientras Oficialía no implementa CatalogoJudicialApi (docs/CONTRATOS.md 3.1).
-// Son los datos iniciales sugeridos en docs/ARQUITECTURA.md (pendiente 2). Cuando exista el contrato, se usa
-// CatalogoJudicialApi y esta clase se borra.
+// Materias del catálogo de Oficialía (tabla materia_Ofc). Peritajes solo las lee.
 public class MateriaDao {
 
-    private static final List<Materia> MATERIAS = List.of(
-            new Materia(1L, "Civil"),
-            new Materia(2L, "Familiar"),
-            new Materia(3L, "Mercantil"),
-            new Materia(4L, "Penal"));
-
     public List<Materia> listarActivas() {
-        return MATERIAS;
-    }
-
-    public Materia getById(Long id) {
-        for (Materia materia : MATERIAS) {
-            if (materia.getId().equals(id)) {
-                return materia;
+        String sql = "SELECT clave_materia, nombre FROM materia_Ofc WHERE estado = 'ACTIVO' ORDER BY nombre";
+        List<Materia> materias = new ArrayList<>();
+        try (Connection con = ConexionBD.obtener();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                materias.add(new Materia(rs.getString("clave_materia"), rs.getString("nombre")));
             }
+            return materias;
+        } catch (SQLException e) {
+            throw new BaseDatosException("No se pudieron consultar las materias", e);
         }
-        return null;
     }
 
-    // true si hay al menos una y todas están en el catálogo (evita ids alterados en el formulario)
-    public boolean todasExisten(Collection<Long> ids) {
-        if (ids == null || ids.isEmpty()) {
+    // true si hay al menos una y todas son materias activas (evita claves alteradas en el formulario)
+    public boolean todasExisten(Collection<String> claves) {
+        if (claves == null || claves.isEmpty()) {
             return false;
         }
-        for (Long id : ids) {
-            if (getById(id) == null) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    // "Civil · Familiar"
-    public String nombres(Collection<Long> ids) {
-        return ids.stream()
-                .map(this::getById)
-                .filter(Objects::nonNull)
-                .map(Materia::getNombre)
-                .collect(Collectors.joining(" · "));
+        List<String> activas = listarActivas().stream().map(Materia::getClave).toList();
+        return activas.containsAll(claves);
     }
 }

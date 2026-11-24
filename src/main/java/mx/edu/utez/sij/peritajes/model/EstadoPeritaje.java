@@ -1,6 +1,7 @@
 package mx.edu.utez.sij.peritajes.model;
 
-// Estados del peritaje (docs/modulos/peritajes.md, sección 5; DFR regla de negocio 1)
+// Estados del peritaje (docs/modulos/peritajes.md, sección 5; DFR regla de negocio 1).
+// El texto es exactamente el valor del ENUM de peritaje_Per.estado_peritaje.
 public enum EstadoPeritaje {
 
     PENDIENTE_ASIGNACION("Pendiente de Asignación"),
@@ -15,7 +16,7 @@ public enum EstadoPeritaje {
         this.texto = texto;
     }
 
-    // Texto para mostrar en pantalla
+    // Texto para mostrar en pantalla y valor en la base de datos
     public String getTexto() {
         return texto;
     }
@@ -25,7 +26,7 @@ public enum EstadoPeritaje {
         return this == ASIGNADO || this == EN_PROCESO;
     }
 
-    // "EN_PROCESO" → EN_PROCESO; vacío o desconocido → null (sin filtro)
+    // "EN_PROCESO" (parámetro de la URL) → EN_PROCESO; vacío o desconocido → null (sin filtro)
     public static EstadoPeritaje deTexto(String texto) {
         for (EstadoPeritaje estado : values()) {
             if (estado.name().equals(texto)) {
@@ -33,5 +34,15 @@ public enum EstadoPeritaje {
             }
         }
         return null;
+    }
+
+    // "En Proceso" (valor de la base de datos) → EN_PROCESO
+    public static EstadoPeritaje deBaseDatos(String valor) {
+        for (EstadoPeritaje estado : values()) {
+            if (estado.texto.equals(valor)) {
+                return estado;
+            }
+        }
+        throw new IllegalArgumentException("Estado de peritaje desconocido: " + valor);
     }
 }

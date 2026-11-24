@@ -3,8 +3,8 @@ package mx.edu.utez.sij.peritajes.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import mx.edu.utez.sij.nucleo.web.Parametros;
 import mx.edu.utez.sij.peritajes.model.Perito;
+import mx.edu.utez.sij.peritajes.model.UsuarioPeritajes;
 import mx.edu.utez.sij.peritajes.model.dao.MateriaDao;
-import mx.edu.utez.sij.peritajes.model.dao.PeritoDao;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -14,9 +14,9 @@ import java.util.Set;
 // Lectura y validación del formulario de perito (registro y edición).
 // Lo comparten PeritoRegistrarServlet y PeritoEditarServlet. Orden en el servlet:
 // 1. leer(request)  2. Validador.validar(perito) (anotaciones del model)  3. validar(perito, alta) (reglas del DFR)
+// 4. PeritoDao.create / update (revisa en la base el correo repetido y las materias).
 final class PeritoFormSupport {
 
-    private static final PeritoDao peritoDao = new PeritoDao();
     private static final MateriaDao materiaDao = new MateriaDao();
 
     private PeritoFormSupport() {
@@ -25,16 +25,16 @@ final class PeritoFormSupport {
     // Arma el Perito con lo que llegó del navegador, tal cual (las validaciones van después)
     static Perito leer(HttpServletRequest request) {
         Perito perito = new Perito();
-        perito.setNumeroRegistro(Parametros.crudo(request, "numeroRegistro"));
         perito.setNombre(Parametros.crudo(request, "nombre"));
         perito.setApellidoPaterno(Parametros.crudo(request, "apellidoPaterno"));
         perito.setApellidoMaterno(Parametros.crudo(request, "apellidoMaterno"));
         perito.setCorreo(Parametros.crudo(request, "correo"));
-        perito.setTelefono(Parametros.crudo(request, "telefono"));
+        perito.setRolSistema(Parametros.texto(request, "rol"));
         // especialidades[0], especialidades[1], ... (peritos.js agrega y quita renglones)
         List<String> especialidades = Parametros.lista(request, "especialidades");
         perito.setEspecialidades(especialidades.isEmpty() ? new ArrayList<>(List.of("")) : especialidades);
-        perito.setMateriasIds(Parametros.numeros(request, "materiasIds"));
+        String[] materias = request.getParameterValues("materias");
+        perito.setMaterias(materias == null ? new LinkedHashSet<>() : new LinkedHashSet<>(List.of(materias)));
         return perito;
     }
 
@@ -45,45 +45,20 @@ final class PeritoFormSupport {
         return perito;
     }
 
-    // Copia del perito para llenar el formulario de edición (el teléfono como 777 000 0186).
-    // Es copia para no cambiar el perito guardado mientras se edita.
-    static Perito copiaParaEditar(Perito perito) {
-        Perito copia = new Perito();
-        copia.setNumeroRegistro(perito.getNumeroRegistro());
-        copia.setNombre(perito.getNombre());
-        copia.setApellidoPaterno(perito.getApellidoPaterno());
-        copia.setApellidoMaterno(perito.getApellidoMaterno());
-        copia.setCorreo(perito.getCorreo());
-        copia.setTelefono(perito.getTelefonoFormateado());
-        copia.setEspecialidades(new ArrayList<>(perito.getEspecialidades()));
-        copia.setMateriasIds(new LinkedHashSet<>(perito.getMateriasIds()));
-        return copia;
-    }
-
     // Reglas que no caben en las anotaciones (RF 3.1 y 3.3). Deja los datos limpios para guardarlos.
-    // alta = true en el registro (revisa número de registro y correo repetidos); en la edición esos dos no cambian.
+    // alta = true en el registro (revisa el rol y normaliza el correo); en la edición esos dos no cambian.
     // Regresa el mensaje de error, o null si todo está bien.
     static String validar(Perito perito, boolean alta) {
         perito.setNombre(perito.getNombre().trim());
         perito.setApellidoPaterno(perito.getApellidoPaterno().trim());
         perito.setApellidoMaterno(vacioANull(perito.getApellidoMaterno()));
-        perito.setTelefono(perito.getTelefono().replaceAll("\\s", ""));
 
         if (alta) {
-            perito.setNumeroRegistro(perito.getNumeroRegistro().trim().toUpperCase());
             perito.setCorreo(perito.getCorreo().trim().toLowerCase());
-            // RF 3.1: si ya existe (por identificador o correo) se avisa y no se registra
-            if (peritoDao.existeNumeroRegistro(perito.getNumeroRegistro())) {
-                return "El perito ya existe: hay un perito registrado con el número " + perito.getNumeroRegistro();
+            // N1: el rol se elige en el registro (Perito o Perito Administrador)
+            if (!UsuarioPeritajes.esRolDePerito(perito.getRolSistema())) {
+                return "Seleccione si el perito será Perito o Perito Administrador";
             }
-            if (peritoDao.existeCorreo(perito.getCorreo())) {
-                return "El perito ya existe: hay un perito registrado con el correo " + perito.getCorreo();
-            }
-        }
-
-        // Evita ids de materia que no están en el catálogo (por ejemplo, alterando el formulario)
-        if (!materiaDao.todasExisten(perito.getMateriasIds())) {
-            return "Seleccione al menos una materia válida para la asignación";
         }
 
         // Especialidades: sin espacios de más, sin renglones vacíos y sin repetidas (sin importar mayúsculas)
@@ -107,9 +82,25 @@ final class PeritoFormSupport {
         return null;
     }
 
+    // Copia del perito para llenar el formulario de edición (para no cambiar el perito guardado mientras se edita)
+    static Perito copiaParaEditar(Perito perito) {
+        Perito copia = new Perito();
+        copia.setId(perito.getId());
+        copia.setNombre(perito.getNombre());
+        copia.setApellidoPaterno(perito.getApellidoPaterno());
+        copia.setApellidoMaterno(perito.getApellidoMaterno());
+        copia.setCorreo(perito.getCorreo());
+        copia.setRolSistema(perito.getRolSistema());
+        copia.setEspecialidades(new ArrayList<>(perito.getEspecialidades()));
+        copia.setMaterias(new LinkedHashSet<>(perito.getMaterias()));
+        return copia;
+    }
+
     // Datos que el formulario necesita además del perito
     static void datosDelFormulario(HttpServletRequest request) {
         request.setAttribute("materias", materiaDao.listarActivas());
+        request.setAttribute("rolPerito", UsuarioPeritajes.PERITO);
+        request.setAttribute("rolPeritoAdmin", UsuarioPeritajes.PERITO_ADMIN);
     }
 
     private static String vacioANull(String texto) {

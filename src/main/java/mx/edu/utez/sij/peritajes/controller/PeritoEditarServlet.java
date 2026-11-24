@@ -19,7 +19,7 @@ import java.util.Map;
 // RF 3.3 Edición de perito (en la misma pantalla está el cambio de estado, RF 3.4).
 // URL: GET /peritajes/peritos/editar?id=5 (formulario) · POST /peritajes/peritos/editar?id=5 (guardar)
 // Vista: WEB-INF/jsp/peritajes/peritos/editar.jsp
-// Permiso: PERITAJES_ADMIN y PERITAJES_PERITO_ADMIN (hoy con el usuario de "Ver como", PeritajesAuth).
+// Permiso: PERITAJES_ADMIN y PERITAJES_PERITO_ADMIN.
 @WebServlet("/peritajes/peritos/editar")
 public class PeritoEditarServlet extends HttpServlet {
 
@@ -28,7 +28,7 @@ public class PeritoEditarServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         if (PeritajesAuth.exigirAdministrador(request, response) == null) {
-            return;                                     // ya respondió 403
+            return;                                     // ya mandó al login o respondió 403
         }
         Perito perito = dao.getById(Parametros.numero(request, "id"));
         if (perito == null) {
@@ -43,7 +43,7 @@ public class PeritoEditarServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         UsuarioPeritajes usuario = PeritajesAuth.exigirAdministrador(request, response);
         if (usuario == null) {
-            return;                                     // ya respondió 403
+            return;                                     // ya mandó al login o respondió 403
         }
         Perito perito = dao.getById(Parametros.numero(request, "id"));
         if (perito == null) {
@@ -52,18 +52,24 @@ public class PeritoEditarServlet extends HttpServlet {
         }
 
         Perito datos = PeritoFormSupport.leer(request);
+        // El correo y el rol no se editan: se usan los guardados (también para que pase la validación)
+        datos.setId(perito.getId());
+        datos.setCorreo(perito.getCorreo());
+        datos.setRolSistema(perito.getRolSistema());
         Map<String, String> errores = Validador.validar(datos);
         if (errores.isEmpty()) {
             String error = PeritoFormSupport.validar(datos, false);
-            datos.setId(perito.getId());
-            if (error == null && dao.update(datos, usuario)) {
-                FlashMessage.exito(request, "Datos actualizados correctamente", perito.getNombreCompleto() + " · "
+            if (error == null) {
+                error = dao.update(datos, usuario);
+            }
+            if (error == null) {
+                FlashMessage.exito(request, "Datos actualizados correctamente", datos.getNombreCompleto() + " · "
                         + perito.getNumeroRegistro() + " actualizado. Su estado permanece "
                         + (perito.isActivo() ? "Activo." : "Inactivo."));
                 Vistas.redirigir(request, response, "/peritajes/peritos");
                 return;
             }
-            request.setAttribute("error", error != null ? error : "No se pudieron guardar los cambios. Intente de nuevo");
+            request.setAttribute("error", error);
         }
 
         request.setAttribute("peritoForm", datos);

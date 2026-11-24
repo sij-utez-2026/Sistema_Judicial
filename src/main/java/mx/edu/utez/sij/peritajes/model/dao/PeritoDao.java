@@ -1,101 +1,205 @@
 package mx.edu.utez.sij.peritajes.model.dao;
 
+import mx.edu.utez.sij.nucleo.bd.ConexionBD;
 import mx.edu.utez.sij.nucleo.web.Pagina;
-import mx.edu.utez.sij.peritajes.model.EstadoPeritaje;
-import mx.edu.utez.sij.peritajes.model.Materia;
 import mx.edu.utez.sij.peritajes.model.Peritaje;
 import mx.edu.utez.sij.peritajes.model.Perito;
 import mx.edu.utez.sij.peritajes.model.UsuarioPeritajes;
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.SQLIntegrityConstraintViolationException;
+import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
-import static mx.edu.utez.sij.peritajes.model.dao.BaseDatosMemoria.PERITAJES;
-import static mx.edu.utez.sij.peritajes.model.dao.BaseDatosMemoria.PERITOS;
-
 // Padrón de peritos (RF 3.1 – 3.4). Reglas en docs/modulos/peritajes.md, sección 6.7.
-// Tablas: per_perito, per_perito_especialidad y per_perito_materia (de materias solo el id).
-// Pendiente con el núcleo: crear la cuenta con usuarioService.crear(nombre, correo, "PERITAJES_PERITO") y la baja
-// o reactivación con usuarioService.quitarRol(...) / agregarRol(...).
+// Un perito es un usuario de user_Per con rol PERITAJES_PERITO o PERITAJES_PERITO_ADMIN; sus especialidades
+// están en educacion_especialidad_Per y sus materias en perito_materia_Per.
+// Los métodos que cambian algo regresan el mensaje de error, o null si todo salió bien.
 public class PeritoDao {
 
     // RF 3.2: 25 registros por página y el administrador puede cambiar la cantidad
     public static final int TAMANO_PAGINA = 25;
     public static final List<Integer> TAMANOS_PAGINA = List.of(10, 25, 50, 100);
 
-    private static final ZoneId ZONA = ZoneId.of("America/Mexico_City");
+    private static final String SELECT = "SELECT u.id_usuario, u.nombre, u.apellido_paterno, u.apellido_materno,"
+            + " u.correo, u.Status, r.rol,"
+            + " (SELECT GROUP_CONCAT(mt.nombre ORDER BY mt.nombre SEPARATOR ' · ') FROM perito_materia_Per pm"
+            + "    JOIN materia_Ofc mt ON mt.clave_materia = pm.clave_materia WHERE pm.id_usuario = u.id_usuario) AS materias,"
+            + " " + PeritajeDao.CARGA_ASIGNADOS + " AS asignados,"
+            + " " + PeritajeDao.CARGA_EN_PROCESO + " AS en_proceso"
+            + " FROM user_Per u JOIN Rol r ON r.id_rol = u.id_rol"
+            + " WHERE r.rol IN ('" + UsuarioPeritajes.PERITO + "', '" + UsuarioPeritajes.PERITO_ADMIN + "')";
 
     private final MateriaDao materiaDao = new MateriaDao();
+    private final PeritajeDao peritajeDao = new PeritajeDao();
     private final BitacoraDao bitacoraDao = new BitacoraDao();
 
     // RF 3.1 Registro. El perito siempre empieza Activo. Los datos ya deben venir validados (PeritoFormSupport).
-    // SQL (en una transacción): INSERT INTO per_perito (...) VALUES (...); un INSERT por especialidad
-    //      en per_perito_especialidad y uno por materia en per_perito_materia.
-    public boolean create(Perito perito, UsuarioPeritajes usuario) {
-        perito.setId(BaseDatosMemoria.ID_PERITO.getAndIncrement());
-        perito.setActivo(true);
-        perito.setCreadoEn(LocalDateTime.now(ZONA));
-        PERITOS.put(perito.getId(), perito);
+    // contrasenaCifrada: la contraseña temporal ya cifrada (Contrasena.cifrar). Al guardar se le pone el id.
+    // El trigger trg_user_Per_login_ai copia el correo y la contraseña a Login.
+    public String create(Perito perito, String contrasenaCifrada, UsuarioPeritajes usuario) {
+        if (!UsuarioPeritajes.esRolDePerito(perito.getRolSistema())) {
+            return "Seleccione si el perito será Perito o Perito Administrador";
+        }
+        if (!materiaDao.todasExisten(perito.getMaterias())) {
+            return "Seleccione al menos una materia válida para la asignación";
+        }
+        // RF 3.1: si ya existe se avisa y no se registra. Login tiene los correos de TODOS los módulos.
+        String duplicado = "El perito ya existe: hay un usuario registrado con el correo " + perito.getCorreo();
+        if (existeCorreo(perito.getCorreo())) {
+            return duplicado;
+        }
 
-        // RF 5.2: altas del catálogo
-        bitacoraDao.registrar(usuario, BitacoraDao.ALTA_PERITO, perito.getNumeroRegistro(),
-                perito.getNombreCompleto() + ". Especialidades: " + String.join(", ", perito.getEspecialidades())
-                        + ". Materias: " + materiaDao.nombres(perito.getMateriasIds()) + ".");
-        return true;
+        String sql = "INSERT INTO user_Per (nombre, apellido_paterno, apellido_materno, correo, contrasena, id_rol, Status)"
+                + " SELECT ?, ?, ?, ?, ?, id_rol, TRUE FROM Rol WHERE rol = ?";
+        try (Connection con = ConexionBD.obtener()) {
+            con.setAutoCommit(false);
+            try {
+                try (PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+                    ps.setString(1, perito.getNombre());
+                    ps.setString(2, perito.getApellidoPaterno());
+                    ps.setString(3, perito.getApellidoMaterno());
+                    ps.setString(4, perito.getCorreo());
+                    ps.setString(5, contrasenaCifrada);
+                    ps.setString(6, perito.getRolSistema());
+                    if (ps.executeUpdate() == 0) {
+                        con.rollback();
+                        return "El rol " + perito.getRolSistema() + " no está en la tabla Rol de la base de datos";
+                    }
+                    try (ResultSet llaves = ps.getGeneratedKeys()) {
+                        llaves.next();
+                        perito.setId(llaves.getLong(1));
+                    }
+                }
+                guardarEspecialidadesYMaterias(con, perito);
+                // RF 5.2: altas del catálogo
+                bitacoraDao.registrar(con, usuario, BitacoraDao.ALTA_PERITO, perito.getNumeroRegistro(),
+                        perito.getNombreCompleto() + " (" + perito.getRol() + "). Especialidades: "
+                                + String.join(", ", perito.getEspecialidades()) + ". Materias: "
+                                + nombresMaterias(perito.getMaterias()) + ".");
+                con.commit();
+                perito.setActivo(true);
+                return null;
+            } catch (SQLIntegrityConstraintViolationException e) {
+                // Otra persona registró el mismo correo al mismo tiempo (UNIQUE de user_Per o PK de Login)
+                con.rollback();
+                perito.setId(null);
+                return duplicado;
+            } catch (SQLException | RuntimeException e) {
+                con.rollback();
+                perito.setId(null);
+                throw e;
+            }
+        } catch (SQLException e) {
+            throw new BaseDatosException("No se pudo registrar el perito", e);
+        }
     }
 
-    // null si no existe.
-    // SQL: SELECT ... FROM per_perito WHERE id = ?  (+ sus especialidades y materias)
+    // null si no existe o no es perito. Trae especialidades, materias y carga activa.
     public Perito getById(Long id) {
-        Perito perito = id == null ? null : PERITOS.get(id);
-        if (perito != null) {
-            completar(perito);
+        if (id == null) {
+            return null;
         }
-        return perito;
+        try (Connection con = ConexionBD.obtener()) {
+            Perito perito;
+            try (PreparedStatement ps = con.prepareStatement(SELECT + " AND u.id_usuario = ?")) {
+                ps.setLong(1, id);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        return null;
+                    }
+                    perito = leer(rs);
+                }
+            }
+            try (PreparedStatement ps = con.prepareStatement("SELECT descripcion_especialidad FROM educacion_especialidad_Per"
+                    + " WHERE id_usuario = ? ORDER BY id_especialidad")) {
+                ps.setLong(1, id);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        perito.getEspecialidades().add(rs.getString(1));
+                    }
+                }
+            }
+            try (PreparedStatement ps = con.prepareStatement("SELECT clave_materia FROM perito_materia_Per WHERE id_usuario = ?")) {
+                ps.setLong(1, id);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        perito.getMaterias().add(rs.getString(1));
+                    }
+                }
+            }
+            return perito;
+        } catch (SQLException e) {
+            throw new BaseDatosException("No se pudo consultar el perito", e);
+        }
     }
 
-    // RF 3.3 Edición. El correo y el número de registro no se cambian aunque lleguen en el formulario.
+    // RF 3.3 Edición: nombre, apellidos, especialidades y materias. El correo y el rol no se cambian aquí.
     // Cambiar las materias no afecta los casos ya asignados (6.7).
-    // SQL: UPDATE per_perito SET nombre = ?, apellido_paterno = ?, apellido_materno = ?, telefono = ?,
-    //      actualizado_en = ? WHERE id = ?; y se reemplazan sus especialidades y materias (DELETE + INSERT).
-    public boolean update(Perito datos, UsuarioPeritajes usuario) {
-        Perito perito = PERITOS.get(datos.getId());
-        if (perito == null) {
-            return false;
+    public String update(Perito datos, UsuarioPeritajes usuario) {
+        if (!materiaDao.todasExisten(datos.getMaterias())) {
+            return "Seleccione al menos una materia válida para la asignación";
         }
-        perito.setNombre(datos.getNombre());
-        perito.setApellidoPaterno(datos.getApellidoPaterno());
-        perito.setApellidoMaterno(datos.getApellidoMaterno());
-        perito.setTelefono(datos.getTelefono());
-        perito.setEspecialidades(new ArrayList<>(datos.getEspecialidades()));
-        perito.setMateriasIds(new LinkedHashSet<>(datos.getMateriasIds()));
-        perito.setActualizadoEn(LocalDateTime.now(ZONA));
-
-        // RF 3.3 y 5.2: cambios de datos y de especialidad
-        bitacoraDao.registrar(usuario, BitacoraDao.EDICION_PERITO, perito.getNumeroRegistro(),
-                "Datos actualizados. Especialidades: " + String.join(", ", perito.getEspecialidades())
-                        + ". Materias: " + materiaDao.nombres(perito.getMateriasIds()) + ".");
-        return true;
+        String sql = "UPDATE user_Per SET nombre = ?, apellido_paterno = ?, apellido_materno = ? WHERE id_usuario = ?";
+        try (Connection con = ConexionBD.obtener()) {
+            con.setAutoCommit(false);
+            try {
+                try (PreparedStatement ps = con.prepareStatement(sql)) {
+                    ps.setString(1, datos.getNombre());
+                    ps.setString(2, datos.getApellidoPaterno());
+                    ps.setString(3, datos.getApellidoMaterno());
+                    ps.setLong(4, datos.getId());
+                    if (ps.executeUpdate() == 0) {
+                        con.rollback();
+                        return "El perito no existe";
+                    }
+                }
+                // Se reemplazan las especialidades y las materias
+                try (PreparedStatement ps = con.prepareStatement("DELETE FROM educacion_especialidad_Per WHERE id_usuario = ?")) {
+                    ps.setLong(1, datos.getId());
+                    ps.executeUpdate();
+                }
+                try (PreparedStatement ps = con.prepareStatement("DELETE FROM perito_materia_Per WHERE id_usuario = ?")) {
+                    ps.setLong(1, datos.getId());
+                    ps.executeUpdate();
+                }
+                guardarEspecialidadesYMaterias(con, datos);
+                // RF 3.3 y 5.2: cambios de datos y de especialidad
+                bitacoraDao.registrar(con, usuario, BitacoraDao.EDICION_PERITO, datos.getNumeroRegistro(),
+                        "Datos actualizados. Especialidades: " + String.join(", ", datos.getEspecialidades())
+                                + ". Materias: " + nombresMaterias(datos.getMaterias()) + ".");
+                con.commit();
+                return null;
+            } catch (SQLException | RuntimeException e) {
+                con.rollback();
+                throw e;
+            }
+        } catch (SQLException e) {
+            throw new BaseDatosException("No se pudieron guardar los cambios del perito", e);
+        }
     }
 
-    // RF 3.4 Baja o reactivación (no se borra el perito). No se puede desactivar si tiene peritajes
-    // Asignados o En Proceso. Regresa el mensaje de error, o null si se aplicó.
-    // SQL: UPDATE per_perito SET activo = ?, actualizado_en = ? WHERE id = ?
+    // RF 3.4 Baja o reactivación (no se borra el perito; columna Status). No se puede desactivar si tiene
+    // peritajes Asignados o En Proceso. Un perito inactivo no inicia sesión ni recibe asignaciones.
     public String cambiarEstado(Long id, boolean activo, UsuarioPeritajes usuario) {
-        Perito perito = id == null ? null : PERITOS.get(id);
+        Perito perito = getById(id);
         if (perito == null) {
             return "El perito no existe";
         }
-
-        if (!activo && perito.isActivo()) {
-            List<Peritaje> activos = peritajesActivos(id);
+        if (perito.isActivo() == activo) {
+            return null;   // no hay cambio
+        }
+        if (!activo) {
+            List<Peritaje> activos = peritajeDao.activosDelPerito(id);
             if (!activos.isEmpty()) {
                 String folios = activos.stream().map(Peritaje::getFolio).collect(Collectors.joining(", "));
                 // RF 3.4 y regla de negocio 8 del DFR
@@ -104,122 +208,207 @@ public class PeritoDao {
             }
         }
 
-        boolean cambia = perito.isActivo() != activo;
-        perito.setActivo(activo);
-        perito.setActualizadoEn(LocalDateTime.now(ZONA));
-
-        // RF 3.4 y 5.2: cada cambio de estado
-        if (cambia) {
-            bitacoraDao.registrar(usuario, activo ? BitacoraDao.REACTIVACION_PERITO : BitacoraDao.BAJA_PERITO,
-                    perito.getNumeroRegistro(),
-                    perito.getNombreCompleto() + (activo ? ": Inactivo → Activo." : ": Activo → Inactivo."));
+        try (Connection con = ConexionBD.obtener()) {
+            con.setAutoCommit(false);
+            try {
+                try (PreparedStatement ps = con.prepareStatement("UPDATE user_Per SET Status = ? WHERE id_usuario = ?")) {
+                    ps.setBoolean(1, activo);
+                    ps.setLong(2, id);
+                    ps.executeUpdate();
+                }
+                // RF 3.4 y 5.2: cada cambio de estado
+                bitacoraDao.registrar(con, usuario, activo ? BitacoraDao.REACTIVACION_PERITO : BitacoraDao.BAJA_PERITO,
+                        perito.getNumeroRegistro(),
+                        perito.getNombreCompleto() + (activo ? ": Inactivo → Activo." : ": Activo → Inactivo."));
+                con.commit();
+                return null;
+            } catch (SQLException | RuntimeException e) {
+                con.rollback();
+                throw e;
+            }
+        } catch (SQLException e) {
+            throw new BaseDatosException("No se pudo cambiar el estado del perito", e);
         }
-        return null;
     }
 
     // Catálogo (RF 3.2). Cada filtro es opcional (null o vacío = no filtra). La página empieza en 0.
+    // texto busca en el nombre completo y en el número de registro (PER-0005).
     // Si piden un tamaño de página que no está en TAMANOS_PAGINA, se usa el de 25.
-    // SQL: SELECT ... FROM per_perito p WHERE
-    //        (? IS NULL OR LOWER(CONCAT_WS(' ', p.nombre, p.apellido_paterno, p.apellido_materno)) LIKE ?
-    //                   OR LOWER(p.numero_registro) LIKE ?)
-    //        AND (? IS NULL OR EXISTS (SELECT 1 FROM per_perito_especialidad e WHERE e.perito_id = p.id AND e.especialidad = ?))
-    //        AND (? IS NULL OR EXISTS (SELECT 1 FROM per_perito_materia m WHERE m.perito_id = p.id AND m.materia_id = ?))
-    //        AND (? IS NULL OR p.activo = ?)
-    //      ORDER BY p.nombre, p.apellido_paterno LIMIT ? OFFSET ?
-    //      y otro SELECT COUNT(*) con los mismos filtros para el total (Pagina.offset ayuda con el OFFSET).
-    public Pagina<Perito> buscar(String texto, String especialidad, Long materiaId, Boolean activo,
+    public Pagina<Perito> buscar(String texto, String especialidad, String claveMateria, Boolean activo,
                                  int pagina, int tamano) {
-        String t = vacioANull(texto) == null ? null : texto.trim().toLowerCase();
-        String esp = vacioANull(especialidad);
+        StringBuilder where = new StringBuilder();
+        List<Object> parametros = new ArrayList<>();
+        if (texto != null && !texto.isBlank()) {
+            String t = "%" + texto.trim().toLowerCase() + "%";
+            where.append(" AND (LOWER(CONCAT_WS(' ', u.nombre, u.apellido_paterno, u.apellido_materno)) LIKE ?"
+                    + " OR LOWER(CONCAT('PER-', LPAD(u.id_usuario, 4, '0'))) LIKE ?)");
+            parametros.add(t);
+            parametros.add(t);
+        }
+        if (especialidad != null && !especialidad.isBlank()) {
+            where.append(" AND EXISTS (SELECT 1 FROM educacion_especialidad_Per e"
+                    + " WHERE e.id_usuario = u.id_usuario AND e.descripcion_especialidad = ?)");
+            parametros.add(especialidad.trim());
+        }
+        if (claveMateria != null && !claveMateria.isBlank()) {
+            where.append(" AND EXISTS (SELECT 1 FROM perito_materia_Per pm2"
+                    + " WHERE pm2.id_usuario = u.id_usuario AND pm2.clave_materia = ?)");
+            parametros.add(claveMateria);
+        }
+        if (activo != null) {
+            where.append(" AND u.Status = ?");
+            parametros.add(activo);
+        }
+
+        int numero = Math.max(pagina, 0);
         int tamanoValido = TAMANOS_PAGINA.contains(tamano) ? tamano : TAMANO_PAGINA;
+        String sqlTotal = "SELECT COUNT(*) FROM user_Per u JOIN Rol r ON r.id_rol = u.id_rol"
+                + " WHERE r.rol IN ('" + UsuarioPeritajes.PERITO + "', '" + UsuarioPeritajes.PERITO_ADMIN + "')" + where;
+        String sql = SELECT + where + " ORDER BY u.nombre, u.apellido_paterno LIMIT ? OFFSET ?";
 
-        List<Perito> filtrados = PERITOS.values().stream()
-                .filter(p -> t == null
-                        || p.getNombreCompleto().toLowerCase().contains(t)
-                        || p.getNumeroRegistro().toLowerCase().contains(t))
-                .filter(p -> esp == null || p.getEspecialidades().contains(esp))
-                .filter(p -> materiaId == null || p.getMateriasIds().contains(materiaId))
-                .filter(p -> activo == null || p.isActivo() == activo)
-                .sorted(Comparator.comparing(Perito::getNombre, String.CASE_INSENSITIVE_ORDER)
-                        .thenComparing(Perito::getApellidoPaterno, String.CASE_INSENSITIVE_ORDER))
-                .toList();
-
-        Pagina<Perito> resultado = Pagina.de(filtrados, Math.max(pagina, 0), tamanoValido);
-        resultado.getContent().forEach(this::completar);
-        return resultado;
+        List<Perito> peritos = new ArrayList<>();
+        try (Connection con = ConexionBD.obtener()) {
+            long total;
+            try (PreparedStatement ps = con.prepareStatement(sqlTotal)) {
+                Jdbc.asignar(ps, parametros);
+                try (ResultSet rs = ps.executeQuery()) {
+                    rs.next();
+                    total = rs.getLong(1);
+                }
+            }
+            try (PreparedStatement ps = con.prepareStatement(sql)) {
+                int i = Jdbc.asignar(ps, parametros);
+                ps.setInt(i++, tamanoValido);
+                ps.setLong(i, (long) numero * tamanoValido);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        peritos.add(leer(rs));
+                    }
+                }
+            }
+            return new Pagina<>(peritos, numero, tamanoValido, total);
+        } catch (SQLException e) {
+            throw new BaseDatosException("No se pudo consultar el catálogo de peritos", e);
+        }
     }
 
-    // Candidatos a asignación (RF 2.2 y 2.3) y el "Ver como" temporal.
-    // SQL: SELECT ... FROM per_perito WHERE activo = TRUE
-    public List<Perito> listarActivos() {
-        return PERITOS.values().stream().filter(Perito::isActivo).toList();
+    // Todos los peritos (activos e inactivos), para el filtro de perito de la lista de casos
+    public List<Perito> listarTodos() {
+        List<Perito> peritos = new ArrayList<>();
+        try (Connection con = ConexionBD.obtener();
+             PreparedStatement ps = con.prepareStatement(SELECT + " ORDER BY u.nombre, u.apellido_paterno");
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                peritos.add(leer(rs));
+            }
+            return peritos;
+        } catch (SQLException e) {
+            throw new BaseDatosException("No se pudieron consultar los peritos", e);
+        }
     }
 
-    // Peritajes Asignados y En Proceso del perito, del más antiguo al más reciente (pantalla de edición y baja).
-    // SQL: SELECT ... FROM per_peritaje WHERE perito_id = ? AND estado IN ('ASIGNADO','EN_PROCESO') ORDER BY fecha_solicitud
+    // Peritajes Asignados y En Proceso del perito (pantalla de edición y baja)
     public List<Peritaje> peritajesActivos(Long peritoId) {
-        return PERITAJES.values().stream()
-                .filter(p -> peritoId.equals(p.getPeritoId()) && p.getEstado().isActivo())
-                .sorted(Comparator.comparing(Peritaje::getFechaSolicitud))
-                .toList();
+        return peritajeDao.activosDelPerito(peritoId);
     }
 
-    // SQL: SELECT COUNT(*) FROM per_perito
     public long contar() {
-        return PERITOS.size();
+        return buscar(null, null, null, null, 0, TAMANO_PAGINA).getTotalElements();
     }
 
-    // SQL: SELECT COUNT(*) FROM per_perito WHERE activo = ?
     public long contarPorEstado(boolean activo) {
-        return PERITOS.values().stream().filter(p -> p.isActivo() == activo).count();
+        return buscar(null, null, null, activo, 0, TAMANO_PAGINA).getTotalElements();
     }
 
     // RF 3.2: total de peritos por materia, por ejemplo {Civil=3, Familiar=2, ...}
-    // SQL: SELECT COUNT(*) FROM per_perito_materia WHERE materia_id = ?  (una vez por materia)
     public Map<String, Long> totalesPorMateria() {
+        String sql = "SELECT mt.nombre, COUNT(u.id_usuario) FROM materia_Ofc mt"
+                + " LEFT JOIN perito_materia_Per pm ON pm.clave_materia = mt.clave_materia"
+                + " LEFT JOIN user_Per u ON u.id_usuario = pm.id_usuario"
+                + " WHERE mt.estado = 'ACTIVO' GROUP BY mt.clave_materia, mt.nombre ORDER BY mt.nombre";
         Map<String, Long> totales = new LinkedHashMap<>();
-        for (Materia materia : materiaDao.listarActivas()) {
-            long total = PERITOS.values().stream().filter(p -> p.getMateriasIds().contains(materia.getId())).count();
-            totales.put(materia.getNombre(), total);
+        try (Connection con = ConexionBD.obtener();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                totales.put(rs.getString(1), rs.getLong(2));
+            }
+            return totales;
+        } catch (SQLException e) {
+            throw new BaseDatosException("No se pudieron contar los peritos por materia", e);
         }
-        return totales;
     }
 
-    // Especialidades distintas ya registradas, para el filtro del catálogo.
-    // SQL: SELECT DISTINCT especialidad FROM per_perito_especialidad ORDER BY especialidad
+    // Especialidades distintas ya registradas, para el filtro del catálogo
     public List<String> especialidadesRegistradas() {
-        return PERITOS.values().stream()
-                .flatMap(p -> p.getEspecialidades().stream())
-                .distinct()
-                .sorted(String.CASE_INSENSITIVE_ORDER)
-                .toList();
+        String sql = "SELECT DISTINCT descripcion_especialidad FROM educacion_especialidad_Per ORDER BY descripcion_especialidad";
+        List<String> especialidades = new ArrayList<>();
+        try (Connection con = ConexionBD.obtener();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                especialidades.add(rs.getString(1));
+            }
+            return especialidades;
+        } catch (SQLException e) {
+            throw new BaseDatosException("No se pudieron consultar las especialidades", e);
+        }
     }
 
-    // SQL: SELECT COUNT(*) FROM per_perito WHERE LOWER(numero_registro) = LOWER(?)
-    public boolean existeNumeroRegistro(String numeroRegistro) {
-        return PERITOS.values().stream().anyMatch(p -> p.getNumeroRegistro().equalsIgnoreCase(numeroRegistro));
-    }
-
-    // SQL: SELECT COUNT(*) FROM per_perito WHERE LOWER(correo) = LOWER(?)
+    // El correo ya está en Login (de cualquier módulo: el script no deja repetirlo)
     public boolean existeCorreo(String correo) {
-        return PERITOS.values().stream().anyMatch(p -> p.getCorreo().equalsIgnoreCase(correo));
+        try (Connection con = ConexionBD.obtener();
+             PreparedStatement ps = con.prepareStatement("SELECT 1 FROM Login WHERE LOWER(correo) = LOWER(?)")) {
+            ps.setString(1, correo);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            throw new BaseDatosException("No se pudo revisar el correo", e);
+        }
     }
 
-    // Llena los campos de solo lectura: nombres de las materias y carga activa (6.1).
-    // SQL: SELECT COUNT(*) FROM per_peritaje WHERE perito_id = ? AND estado = ?  (Asignado y En Proceso)
-    private void completar(Perito perito) {
-        perito.setMateriasTexto(materiaDao.nombres(perito.getMateriasIds()));
-        perito.setCargaAsignados(contarPeritajes(perito.getId(), EstadoPeritaje.ASIGNADO));
-        perito.setCargaEnProceso(contarPeritajes(perito.getId(), EstadoPeritaje.EN_PROCESO));
+    private void guardarEspecialidadesYMaterias(Connection con, Perito perito) throws SQLException {
+        try (PreparedStatement ps = con.prepareStatement(
+                "INSERT INTO educacion_especialidad_Per (id_usuario, descripcion_especialidad) VALUES (?, ?)")) {
+            for (String especialidad : perito.getEspecialidades()) {
+                ps.setLong(1, perito.getId());
+                ps.setString(2, especialidad);
+                ps.executeUpdate();
+            }
+        }
+        try (PreparedStatement ps = con.prepareStatement(
+                "INSERT INTO perito_materia_Per (id_usuario, clave_materia) VALUES (?, ?)")) {
+            for (String clave : perito.getMaterias()) {
+                ps.setLong(1, perito.getId());
+                ps.setString(2, clave);
+                ps.executeUpdate();
+            }
+        }
     }
 
-    private long contarPeritajes(Long peritoId, EstadoPeritaje estado) {
-        return PERITAJES.values().stream()
-                .filter(p -> peritoId.equals(p.getPeritoId()) && p.getEstado() == estado)
-                .count();
+    // "Civil · Familiar" a partir de las claves
+    private String nombresMaterias(Set<String> claves) {
+        return materiaDao.listarActivas().stream()
+                .filter(m -> claves.contains(m.getClave()))
+                .map(m -> m.getNombre())
+                .collect(Collectors.joining(" · "));
     }
 
-    private String vacioANull(String texto) {
-        return (texto == null || texto.isBlank()) ? null : texto.trim();
+    private Perito leer(ResultSet rs) throws SQLException {
+        Perito p = new Perito();
+        p.setId(rs.getLong("id_usuario"));
+        p.setNombre(rs.getString("nombre"));
+        p.setApellidoPaterno(rs.getString("apellido_paterno"));
+        p.setApellidoMaterno(rs.getString("apellido_materno"));
+        p.setCorreo(rs.getString("correo"));
+        p.setActivo(rs.getBoolean("Status"));
+        p.setRolSistema(rs.getString("rol"));
+        p.setMateriasTexto(rs.getString("materias") == null ? "" : rs.getString("materias"));
+        p.setCargaAsignados(rs.getLong("asignados"));
+        p.setCargaEnProceso(rs.getLong("en_proceso"));
+        p.setEspecialidades(new ArrayList<>());
+        p.setMaterias(new LinkedHashSet<>());
+        return p;
     }
 }
