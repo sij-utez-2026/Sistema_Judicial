@@ -2,7 +2,7 @@
 <%--
     <n:icono nombre="personas"/>      <n:icono nombre="buscar" tamano="14"/>
   Nombres: inicio, personas, persona, carpeta, documento, calendario, balanza, grafica, campana,
-           bitacora, edificio, buscar, editar, mas, salir, punto.
+           bitacora, edificio, buscar, editar, mas, salir, ojo, ojo-tachado, punto.
   ¿Falta uno? Pedirlo a los integradores para que todos los módulos usen los mismos.
 --%>
 <%@ attribute name="nombre" required="true" %>
@@ -26,6 +26,8 @@
     <c:when test="${nombre eq 'editar'}"><path d="M11 2.5l2.5 2.5L5 13.5H2.5V11z"/></c:when>
     <c:when test="${nombre eq 'mas'}"><path d="M8 2.5v11M2.5 8h11"/></c:when>
     <c:when test="${nombre eq 'salir'}"><path d="M6 2.5H2.5v11H6M10 5l3 3-3 3M13 8H6"/></c:when>
+    <c:when test="${nombre eq 'ojo'}"><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/><circle cx="8" cy="8" r="2.2"/></c:when>
+    <c:when test="${nombre eq 'ojo-tachado'}"><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/><circle cx="8" cy="8" r="2.2"/><path d="M2 14L14 2"/></c:when>
     <c:otherwise><circle cx="8" cy="8" r="2"/></c:otherwise>
 </c:choose>
 </svg>
