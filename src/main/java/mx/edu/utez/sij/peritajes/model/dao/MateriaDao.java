@@ -15,13 +15,13 @@ import java.util.List;
 public class MateriaDao {
 
     public List<Materia> listarActivas() {
-        String sql = "SELECT clave_materia, nombre FROM materia_Ofc WHERE estado = 'ACTIVO' ORDER BY nombre";
+        String sql = "SELECT id_materia, nombre FROM materia_Ofc WHERE estado = 'ACTIVO' ORDER BY nombre";
         List<Materia> materias = new ArrayList<>();
         try (Connection con = ConexionBD.obtener();
              PreparedStatement ps = con.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                materias.add(new Materia(rs.getString("clave_materia"), rs.getString("nombre")));
+                materias.add(new Materia(rs.getLong("id_materia"), rs.getString("nombre")));
             }
             return materias;
         } catch (SQLException e) {
@@ -29,12 +29,12 @@ public class MateriaDao {
         }
     }
 
-    // true si hay al menos una y todas son materias activas (evita claves alteradas en el formulario)
-    public boolean todasExisten(Collection<String> claves) {
-        if (claves == null || claves.isEmpty()) {
+    // true si hay al menos una y todas son materias activas (evita ids alterados en el formulario)
+    public boolean todasExisten(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
             return false;
         }
-        List<String> activas = listarActivas().stream().map(Materia::getClave).toList();
-        return activas.containsAll(claves);
+        List<Long> activas = listarActivas().stream().map(Materia::getId).toList();
+        return activas.containsAll(ids);
     }
 }

@@ -18,7 +18,7 @@ public class Peritaje {
     // De la solicitud y la demanda (solo lectura)
     private String folioDemanda;
     private String numeroExpediente;      // null si la demanda aún no tiene expediente
-    private String claveMateria;
+    private Long materiaId;               // id_materia de materia_Ofc
     private String materia;               // nombre: "Civil"
     private String descripcionDemanda;
     private String juzgado;
@@ -133,12 +133,12 @@ public class Peritaje {
         this.numeroExpediente = numeroExpediente;
     }
 
-    public String getClaveMateria() {
-        return claveMateria;
+    public Long getMateriaId() {
+        return materiaId;
     }
 
-    public void setClaveMateria(String claveMateria) {
-        this.claveMateria = claveMateria;
+    public void setMateriaId(Long materiaId) {
+        this.materiaId = materiaId;
     }
 
     public String getMateria() {

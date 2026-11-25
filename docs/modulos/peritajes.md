@@ -63,16 +63,21 @@ Los peritos no pertenecen a ningún juzgado (lo confirma Audiencias 2.4 y 6.1).
 ## 4. Modelo de datos
 
 Base integrada `sistema_judicial` (script de todos los equipos). Las tablas de Peritajes terminan en `_Per`.
-Script completo (versión 3.1): `docs/modulos/peritajes-bd-script-corregido.sql`. Si la base ya estaba creada:
-original → versión 2 con `peritajes-bd-cambios.sql`; versión 2 → versión 3 con `peritajes-bd-cambios-v3.sql`;
-versión 3 → versión 3.1 con `peritajes-bd-cambios-v3.1.sql`.
+Script completo (versión 4): `docs/modulos/peritajes-bd-script-corregido.sql`. Crea la base **desde cero** (sin `ALTER TABLE`).
+Scripts para bases anteriores: original → versión 2 con `peritajes-bd-cambios.sql`; versión 2 → versión 3 con `peritajes-bd-cambios-v3.sql`;
+versión 3 → versión 3.1 con `peritajes-bd-cambios-v3.1.sql`. De la 3.1 a la 4 no hay script en el repositorio: se recrea la base.
+
+**Versión 4 (cambios de Oficialía) en lo que lee Peritajes:**
+- `materia_Ofc`, `oficialia_Ofc` y `juzgado_Ofc` tienen llave numérica (`id_materia`, `id_oficialia`, `id_juzgado`) en lugar de claves de texto.
+- `perito_materia_Per.clave_materia` y `solicitud_perito_Aud.clave_materia` conservan el nombre, pero guardan el `id_materia` (INT). En Java, la materia es `Long` (`Materia.getId()`, `Peritaje.getMateriaId()`, `Perito.getMaterias()`).
+- `documento_Ofc` se liga a la demanda por `id_demanda` (antes por `folio`).
 Datos de prueba: `peritajes-bd-datos-prueba.sql`.
 
 | Tabla | Para qué | Notas |
 | :---- | :---- | :---- |
 | `user_Per` + `Rol` | Usuarios del módulo (Administrador, Perito Administrador y Perito) | Un rol por usuario. El **perito es el usuario**: su `id_usuario` es el id del perito y su número de registro (`PER-0005`). `Status` = Activo/Inactivo. `carga_trabajo` = carga activa (6.1). El trigger copia correo y contraseña a `Login` |
 | `educacion_especialidad_Per` | Especialidades del perito (texto libre, al menos una) | |
-| `perito_materia_Per` | Materias del perito (las usa la asignación automática) | Claves de `materia_Ofc` (CIV, FAM...) |
+| `perito_materia_Per` | Materias del perito (las usa la asignación automática) | `clave_materia` guarda el `id_materia` de `materia_Ofc` (versión 4) |
 | `solicitud_perito_Aud` | Solicitud que guarda Audiencias: demanda (`folio`) y **una** materia | Peritajes solo la lee |
 | `peritaje_Per` | El peritaje de cada solicitud | El **folio del peritaje es su id**. `fecha_creacion` = fecha de solicitud |
 | `asignacion_Per` | Asignación automática y reasignaciones | La **vigente es la de mayor `id_asignacion`**. Sin `id_usuario_cambio` = automática |
@@ -89,7 +94,7 @@ Datos de prueba: `peritajes-bd-datos-prueba.sql`.
 - `peritaje_Per.fecha_apertura`, `fecha_entrega` y `fecha_cancelacion` (RF 4.2, 4.4 y 2.4).
 - `dictamen_Per.version`, para el autoguardado: `UPDATE dictamen_Per SET ..., version = version + 1 WHERE id_peritaje = ? AND version = ?`; si no actualiza ninguna fila, otra ventana guardó antes (409).
 - `bitacora_Per.referencia`: folio del peritaje o número de registro del perito, para filtrar.
-- `user_Per.carga_trabajo` (versión 3.1): carga activa del perito, la usa la asignación automática (6.1 y 6.2).
+- `user_Per.carga_trabajo` (versión 3.1, sigue en la 4): carga activa del perito, la usa la asignación automática (6.1 y 6.2).
 - Trigger `trg_user_Per_login_au`: al cambiar la contraseña (o el correo) en `user_Per` también se cambia en `Login` (RF 1.2). En la versión 2 del script el mismo trigger existe para `user_Ofc`, `user_Aud` y `user_Seg`, y busca en `Login` por el correo anterior.
 - CHECK: `Login.intentos_fallidos >= 0`; `fecha_cancelacion` solo en "Cancelado" y `fecha_entrega` solo en "Dictamen Entregado". Por eso el código cambia el estado y la fecha en el mismo `UPDATE`.
 
@@ -130,7 +135,7 @@ stateDiagram-v2
 ## 6. Reglas de negocio en el código
 
 ### 6.1 Carga activa
-**Asignado + En Proceso** de la asignación vigente. Se guarda en `user_Per.carga_trabajo` (versión 3.1 del script).
+**Asignado + En Proceso** de la asignación vigente. Se guarda en `user_Per.carga_trabajo` (desde la versión 3.1 del script).
 
 - **Quién la cambia:** `PeritajeDao.actualizarCarga(con, peritoId)`, dentro de la misma transacción del cambio:
   - asignación automática: al perito elegido;
@@ -367,5 +372,5 @@ src/main/java/mx/edu/utez/sij/nucleo/bd/       ConexionBD (quita espacios al fin
 - ¿Al menos un anexo obligatorio al finalizar? (hoy son opcionales).
 - Cancelación de solicitudes con el Equipo 2 (pendiente 10). La columna `fecha_cancelacion` ya existe. Al cancelar hay que llamar `PeritajeDao.actualizarCarga` para restarle el peritaje al perito.
 - `documento_Ofc.ruta_archivo`: confirmar con Oficialía si es la ruta o el archivo, para poder descargarlo.
-- Las claves de materia de los datos de prueba (CIV, FAM, MER, PEN): confirmar con Oficialía.
+- Los nombres de materia, distrito, juzgados y oficialías de los datos de prueba (se buscan por nombre desde la versión 4): confirmar con Oficialía.
 - Panel de carga de trabajo (RF 5.3).

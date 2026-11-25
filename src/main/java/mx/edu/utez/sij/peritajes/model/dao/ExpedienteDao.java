@@ -23,14 +23,17 @@ public class ExpedienteDao {
                 + " CONCAT_WS(' ', ddo.nombre, ddo.apellido_paterno, ddo.apellido_materno) AS demandado"
                 + " FROM demanda_Ofc d"
                 + " LEFT JOIN expediente_Ofc e ON e.folio = d.folio"
-                + " LEFT JOIN oficialia_Ofc o ON o.clave_oficialia = d.clave_oficialia"
-                + " LEFT JOIN juzgado_Ofc j ON j.clave_juzgado = o.clave_juzgado"
+                + " LEFT JOIN oficialia_Ofc o ON o.id_oficialia = d.id_oficialia"
+                + " LEFT JOIN juzgado_Ofc j ON j.id_juzgado = o.id_juzgado"
                 + " LEFT JOIN persona_Ofc dte ON dte.id_persona = d.id_demandante"
                 + " LEFT JOIN persona_Ofc ddo ON ddo.id_persona = d.id_demandado"
                 + " WHERE d.folio = ?";
         // [Confirmar con Oficialía] documento_Ofc solo tiene ruta_archivo (BLOB), sin nombre ni tipo:
         // por ahora se listan como "Documento N" y no se descargan.
-        String sqlDocumentos = "SELECT id_documento FROM documento_Ofc WHERE folio = ? ORDER BY id_documento";
+        // Desde la versión 4 de la base, documento_Ofc se liga a la demanda por id_demanda
+        String sqlDocumentos = "SELECT doc.id_documento FROM documento_Ofc doc"
+                + " JOIN demanda_Ofc d ON d.id_demanda = doc.id_demanda"
+                + " WHERE d.folio = ? ORDER BY doc.id_documento";
         if (folioDemanda == null) {
             return null;
         }

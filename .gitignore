@@ -41,3 +41,6 @@ application-local.properties
 bd.properties
 
 .claude/
+
+# Descripción del PR (borrador local)
+docs/PR.md
