@@ -41,6 +41,7 @@ public class PeritajeDao {
             "(SELECT MAX(a2.id_asignacion) FROM asignacion_Per a2 WHERE a2.id_peritaje = p.id_peritaje)";
 
     // Carga activa del perito u (peritajes.md 6.1): Asignado + En Proceso. La usan PeritajeDao y PeritoDao.
+    // Se guarda en user_Per.carga_trabajo con actualizarCarga(...) cada vez que cambia.
     static final String CARGA_ACTIVA = carga("'Asignado', 'En Proceso'");
     static final String CARGA_ASIGNADOS = carga("'Asignado'");
     static final String CARGA_EN_PROCESO = carga("'En Proceso'");
@@ -216,18 +217,19 @@ public class PeritajeDao {
 
     // ===================== Solicitud y asignación (DFR 3.3.4) =====================
 
-    // Peritos elegibles: activos, con rol de perito y con la materia. De menor a mayor carga activa.
+    // Peritos elegibles: activos, con rol de perito y con la materia. De menor a mayor carga de trabajo
+    // (columna user_Per.carga_trabajo = Asignado + En Proceso).
     // excluirPeritoId: el perito actual, en la reasignación (null = no excluye).
     public List<CandidatoAsignacion> candidatos(String claveMateria, Long excluirPeritoId) {
         String sql = "SELECT u.id_usuario, CONCAT_WS(' ', u.nombre, u.apellido_paterno, u.apellido_materno) AS nombre,"
                 + " (SELECT GROUP_CONCAT(mt.nombre ORDER BY mt.nombre SEPARATOR ' · ') FROM perito_materia_Per pm2"
                 + "    JOIN materia_Ofc mt ON mt.clave_materia = pm2.clave_materia WHERE pm2.id_usuario = u.id_usuario) AS materias,"
-                + " " + CARGA_ACTIVA + " AS carga"
+                + " u.carga_trabajo AS carga"
                 + " FROM user_Per u JOIN Rol r ON r.id_rol = u.id_rol"
                 + " WHERE u.Status = TRUE AND r.rol IN (?, ?)"
                 + " AND EXISTS (SELECT 1 FROM perito_materia_Per pm WHERE pm.id_usuario = u.id_usuario AND pm.clave_materia = ?)"
                 + " AND (? IS NULL OR u.id_usuario <> ?)"
-                + " ORDER BY carga, nombre";
+                + " ORDER BY u.carga_trabajo, nombre";
         List<CandidatoAsignacion> candidatos = new ArrayList<>();
         try (Connection con = ConexionBD.obtener();
              PreparedStatement ps = con.prepareStatement(sql)) {
@@ -308,6 +310,9 @@ public class PeritajeDao {
                     ps.setObject(6, LocalDateTime.now(ZONA));
                     ps.executeUpdate();
                 }
+                // El peritaje sigue activo: le suma al perito nuevo y le resta al anterior
+                actualizarCarga(con, nuevoPeritoId);
+                actualizarCarga(con, peritaje.getPeritoId());
                 // RF 2.3 y 5.2: administrador, fecha y hora, perito saliente y entrante, y el motivo
                 bitacoraDao.registrar(con, usuario, BitacoraDao.REASIGNACION_MANUAL, peritaje.getFolio(),
                         peritaje.getPeritoNombreTexto() + " → " + nuevo.getNombre() + ". Estado conservado: "
@@ -336,6 +341,21 @@ public class PeritajeDao {
     public List<Peritaje> activosDelPerito(Long peritoId) {
         return buscar(null, null, EnumSet.of(EstadoPeritaje.ASIGNADO, EstadoPeritaje.EN_PROCESO), peritoId, 0,
                 Integer.MAX_VALUE).getContent();
+    }
+
+    // Guarda en user_Per.carga_trabajo la carga activa del perito (Asignado + En Proceso), contada de los
+    // peritajes. Se llama dentro de la misma transacción después de cada cambio que la mueve: asignación
+    // automática, reasignación (perito nuevo y anterior) y entrega del dictamen. Se recalcula en vez de
+    // sumar o restar 1, para que la columna nunca se desfase. peritoId null = no hace nada.
+    static void actualizarCarga(Connection con, Long peritoId) throws SQLException {
+        if (peritoId == null) {
+            return;
+        }
+        String sql = "UPDATE user_Per u SET u.carga_trabajo = " + CARGA_ACTIVA + " WHERE u.id_usuario = ?";
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setLong(1, peritoId);
+            ps.executeUpdate();
+        }
     }
 
     // ===================== Privados =====================
@@ -430,6 +450,7 @@ public class PeritajeDao {
                     ps.setObject(3, LocalDateTime.now(ZONA));
                     ps.executeUpdate();
                 }
+                actualizarCarga(con, elegido.getPeritoId());
                 // RF 2.2: la asignación se registra en la bitácora (perito, fecha y resultado)
                 bitacoraDao.registrar(con, UsuarioPeritajes.SISTEMA, BitacoraDao.ASIGNACION_AUTOMATICA,
                         peritaje.getFolio(), elegido.getNombre() + ": activo; materia " + peritaje.getMateria()

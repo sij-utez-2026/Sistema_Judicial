@@ -63,13 +63,14 @@ Los peritos no pertenecen a ningún juzgado (lo confirma Audiencias 2.4 y 6.1).
 ## 4. Modelo de datos
 
 Base integrada `sistema_judicial` (script de todos los equipos). Las tablas de Peritajes terminan en `_Per`.
-Script completo (versión 3): `docs/modulos/peritajes-bd-script-corregido.sql`. Si la base ya estaba creada:
-original → versión 2 con `peritajes-bd-cambios.sql`; versión 2 → versión 3 con `peritajes-bd-cambios-v3.sql`.
+Script completo (versión 3.1): `docs/modulos/peritajes-bd-script-corregido.sql`. Si la base ya estaba creada:
+original → versión 2 con `peritajes-bd-cambios.sql`; versión 2 → versión 3 con `peritajes-bd-cambios-v3.sql`;
+versión 3 → versión 3.1 con `peritajes-bd-cambios-v3.1.sql`.
 Datos de prueba: `peritajes-bd-datos-prueba.sql`.
 
 | Tabla | Para qué | Notas |
 | :---- | :---- | :---- |
-| `user_Per` + `Rol` | Usuarios del módulo (Administrador, Perito Administrador y Perito) | Un rol por usuario. El **perito es el usuario**: su `id_usuario` es el id del perito y su número de registro (`PER-0005`). `Status` = Activo/Inactivo. El trigger copia correo y contraseña a `Login` |
+| `user_Per` + `Rol` | Usuarios del módulo (Administrador, Perito Administrador y Perito) | Un rol por usuario. El **perito es el usuario**: su `id_usuario` es el id del perito y su número de registro (`PER-0005`). `Status` = Activo/Inactivo. `carga_trabajo` = carga activa (6.1). El trigger copia correo y contraseña a `Login` |
 | `educacion_especialidad_Per` | Especialidades del perito (texto libre, al menos una) | |
 | `perito_materia_Per` | Materias del perito (las usa la asignación automática) | Claves de `materia_Ofc` (CIV, FAM...) |
 | `solicitud_perito_Aud` | Solicitud que guarda Audiencias: demanda (`folio`) y **una** materia | Peritajes solo la lee |
@@ -88,6 +89,7 @@ Datos de prueba: `peritajes-bd-datos-prueba.sql`.
 - `peritaje_Per.fecha_apertura`, `fecha_entrega` y `fecha_cancelacion` (RF 4.2, 4.4 y 2.4).
 - `dictamen_Per.version`, para el autoguardado: `UPDATE dictamen_Per SET ..., version = version + 1 WHERE id_peritaje = ? AND version = ?`; si no actualiza ninguna fila, otra ventana guardó antes (409).
 - `bitacora_Per.referencia`: folio del peritaje o número de registro del perito, para filtrar.
+- `user_Per.carga_trabajo` (versión 3.1): carga activa del perito, la usa la asignación automática (6.1 y 6.2).
 - Trigger `trg_user_Per_login_au`: al cambiar la contraseña (o el correo) en `user_Per` también se cambia en `Login` (RF 1.2). En la versión 2 del script el mismo trigger existe para `user_Ofc`, `user_Aud` y `user_Seg`, y busca en `Login` por el correo anterior.
 - CHECK: `Login.intentos_fallidos >= 0`; `fecha_cancelacion` solo en "Cancelado" y `fecha_entrega` solo en "Dictamen Entregado". Por eso el código cambia el estado y la fecha en el mismo `UPDATE`.
 
@@ -128,7 +130,15 @@ stateDiagram-v2
 ## 6. Reglas de negocio en el código
 
 ### 6.1 Carga activa
-**Asignado + En Proceso** de la asignación vigente, en una sola consulta del DAO (`PeritajeDao.CARGA_ACTIVA`, la usan también los candidatos y el catálogo).
+**Asignado + En Proceso** de la asignación vigente. Se guarda en `user_Per.carga_trabajo` (versión 3.1 del script).
+
+- **Quién la cambia:** `PeritajeDao.actualizarCarga(con, peritoId)`, dentro de la misma transacción del cambio:
+  - asignación automática: al perito elegido;
+  - reasignación manual: al perito nuevo y al anterior;
+  - entrega del dictamen: al perito que lo entregó.
+  - Abrir el expediente (Asignado → En Proceso) no la cambia.
+- **Cómo:** se vuelve a contar con `PeritajeDao.CARGA_ACTIVA` en lugar de sumar o restar 1, para que la columna no se desfase.
+- **Quién la lee:** los candidatos de la asignación automática y de la reasignación (`PeritajeDao.candidatos`). El catálogo y la baja del perito siguen contando Asignado y En Proceso por separado, porque los muestran desglosados.
 
 ### 6.2 Recepción y asignación automática (2.1, 2.2) — `PeritajeDao.recibirSolicitudes`
 
@@ -355,7 +365,7 @@ src/main/java/mx/edu/utez/sij/nucleo/bd/       ConexionBD (quita espacios al fin
 - Recuperación de contraseña por correo: hoy `/recuperar` solo muestra el aviso.
 - Mensajes de confirmación de 3.1, 3.3 y 3.4: el DFR no da el texto exacto; hoy se usan los de la sección 6.7.
 - ¿Al menos un anexo obligatorio al finalizar? (hoy son opcionales).
-- Cancelación de solicitudes con el Equipo 2 (pendiente 10). La columna `fecha_cancelacion` ya existe.
+- Cancelación de solicitudes con el Equipo 2 (pendiente 10). La columna `fecha_cancelacion` ya existe. Al cancelar hay que llamar `PeritajeDao.actualizarCarga` para restarle el peritaje al perito.
 - `documento_Ofc.ruta_archivo`: confirmar con Oficialía si es la ruta o el archivo, para poder descargarlo.
 - Las claves de materia de los datos de prueba (CIV, FAM, MER, PEN): confirmar con Oficialía.
 - Panel de carga de trabajo (RF 5.3).
