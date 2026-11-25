@@ -1,5 +1,5 @@
 -- ==========================================================
--- Base de datos integrada del sistema judicial — VERSIÓN 3 (incluye cambios de Peritajes, Equipo 3)
+-- Base de datos integrada del sistema judicial — VERSIÓN 3.1 (incluye cambios de Peritajes, Equipo 3)
 -- Módulos: Oficialía de Partes (Ofc), Audiencias (Aud), Peritajes (Per),
 --          Segunda Instancia (Seg) y Copias Certificadas (Cop)
 -- Motor: MySQL 8.0.16 o superior (requiere soporte de CHECK)
@@ -620,6 +620,10 @@ CREATE TABLE pago_Cop (
     CONSTRAINT fk_pago_Cop_id_solicitud FOREIGN KEY (id_solicitud) REFERENCES solicitud_copia_Cop(id_solicitud),
     CONSTRAINT fk_pago_Cop_id_usuario_pago FOREIGN KEY (id_usuario_pago) REFERENCES user_Ofc(id_usuario)
 ) ENGINE=InnoDB;
+
+
+ALTER TABLE user_Per ADD carga_trabajo INT NOT NULL DEFAULT 0;
+ALTER TABLE demanda_Ofc ADD tipo ENUM('Pública','Privada') NOT NULL;
 
 -- ==========================================================
 -- Triggers: mantienen Login sincronizado con cada tabla user_*.

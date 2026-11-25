@@ -39,3 +39,5 @@ target/
 .DS_Store
 application-local.properties
 bd.properties
+
+.claude/
