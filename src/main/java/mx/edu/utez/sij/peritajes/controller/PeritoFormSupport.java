@@ -33,8 +33,8 @@ final class PeritoFormSupport {
         // especialidades[0], especialidades[1], ... (peritos.js agrega y quita renglones)
         List<String> especialidades = Parametros.lista(request, "especialidades");
         perito.setEspecialidades(especialidades.isEmpty() ? new ArrayList<>(List.of("")) : especialidades);
-        String[] materias = request.getParameterValues("materias");
-        perito.setMaterias(materias == null ? new LinkedHashSet<>() : new LinkedHashSet<>(List.of(materias)));
+        // ids de materia_Ofc; los que no son número se ignoran (PeritoDao revisa que existan)
+        perito.setMaterias(Parametros.numeros(request, "materias"));
         return perito;
     }
 

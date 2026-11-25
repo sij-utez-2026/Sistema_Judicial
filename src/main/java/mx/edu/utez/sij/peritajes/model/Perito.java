@@ -41,9 +41,9 @@ public class Perito {
     // Texto libre: área o estudios del perito (al menos una). Llegan como especialidades[0], especialidades[1]...
     private List<String> especialidades = new ArrayList<>();
 
-    // Claves de materia_Ofc (CIV, FAM...)
+    // Ids de materia_Ofc (id_materia)
     @NotEmpty(message = "Seleccione al menos una materia para la asignación")
-    private Set<String> materias = new LinkedHashSet<>();
+    private Set<Long> materias = new LinkedHashSet<>();
 
     private boolean activo = true;      // columna Status
 
@@ -141,11 +141,11 @@ public class Perito {
         this.especialidades = especialidades;
     }
 
-    public Set<String> getMaterias() {
+    public Set<Long> getMaterias() {
         return materias;
     }
 
-    public void setMaterias(Set<String> materias) {
+    public void setMaterias(Set<Long> materias) {
         this.materias = materias;
     }
 

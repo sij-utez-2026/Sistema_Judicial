@@ -31,7 +31,7 @@ public class PeritoListarServlet extends HttpServlet {
         }
         String q = Parametros.texto(request, "q");
         String especialidad = Parametros.texto(request, "especialidad");
-        String materia = Parametros.texto(request, "materia");
+        Long materia = Parametros.numero(request, "materia");   // id_materia
         String estado = Parametros.texto(request, "estado");
         int page = Parametros.entero(request, "page", 0);
         int size = Parametros.entero(request, "size", PeritoDao.TAMANO_PAGINA);
