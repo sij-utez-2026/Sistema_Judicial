@@ -8,6 +8,7 @@
  *   <form data-confirmar="¿...?">  pide confirmación antes de enviar (lo usa <n:confirmar>)
  *   <select data-autoenvio>        envía su formulario al cambiar (filtros)
  *   <input type="file" data-max-mb="5">  avisa si el archivo pasa del tamaño (lo usa <n:archivo>)
+ *   <button data-ver-contrasena="id">    muestra u oculta la contraseña (lo usa <n:contrasena>)
  */
 window.SIJ = (function () {
 
@@ -72,6 +73,29 @@ document.addEventListener('DOMContentLoaded', function () {
     document.addEventListener('input', function (evento) {
         if (evento.target.classList) {
             evento.target.classList.remove('is-invalid');
+        }
+    });
+
+    // ---------- Contraseñas: el ojo muestra u oculta lo escrito (<n:contrasena>) ----------
+    document.querySelectorAll('[data-ver-contrasena]').forEach(function (boton) {
+        var campo = document.getElementById(boton.dataset.verContrasena);
+        if (!campo) {
+            return;
+        }
+        boton.addEventListener('click', function () {
+            var mostrar = campo.type === 'password';
+            campo.type = mostrar ? 'text' : 'password';
+            boton.setAttribute('aria-pressed', mostrar ? 'true' : 'false');
+            boton.setAttribute('aria-label', mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña');
+            boton.querySelector('[data-icono-mostrar]').hidden = mostrar;
+            boton.querySelector('[data-icono-ocultar]').hidden = !mostrar;
+            campo.focus();
+        });
+        // Al enviar se vuelve a ocultar, para que el navegador no la guarde como texto en el historial del formulario
+        if (campo.form) {
+            campo.form.addEventListener('submit', function () {
+                campo.type = 'password';
+            });
         }
     });
 

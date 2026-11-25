@@ -41,7 +41,7 @@
     </c:if>
     <title><c:out value="${titulo}"/> · <c:out value="${empty moduloActual ? 'Sistema Judicial Integral' : moduloActual.sigla}"/></title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="<c:url value='/recursos/nucleo/css/estilos.css'/>">
+    <link rel="stylesheet" href="<c:url value='/recursos/nucleo/css/estilos.css?v=2'/>">
     <jsp:invoke fragment="estilos"/>
 </head>
 <body class="sij-body">
@@ -72,12 +72,16 @@
 
             <div class="sij-etiqueta-menu">Sistema</div>
             <nav class="nav flex-column sij-menu" aria-label="Menú del sistema">
-                <n:menu-item clave="inicio-sistema" url="/" texto="Inicio del sistema" icono="inicio"/>
-                <%-- TODO núcleo: /notificaciones y /cuenta/password --%>
+                <%-- Solo el administrador general tiene la página con los cinco módulos; los demás van directo al suyo --%>
+                <c:if test="${usuarioSesion.administradorGeneral}">
+                    <n:menu-item clave="inicio-sistema" url="/" texto="Inicio del sistema" icono="inicio"/>
+                </c:if>
+                <%-- TODO núcleo: /notificaciones --%>
                 <n:menu-item clave="notificaciones" texto="Notificaciones" icono="campana"/>
+                <n:menu-item clave="cuenta" url="/cuenta/password" texto="Cambiar contraseña" icono="persona"/>
             </nav>
 
-            <%-- TODO núcleo: nombre y rol del usuario en sesión (SesionService) --%>
+            <%-- Usuario en sesión (FiltroNucleo deja usuarioActual; un módulo puede poner un rol más preciso) --%>
             <div class="sij-usuario">
                 <div class="d-flex align-items-center gap-2 mb-2">
                     <div class="sij-avatar" aria-hidden="true"><c:out value="${usuarioActual.iniciales}"/></div>
@@ -86,8 +90,10 @@
                         <div class="sij-subtitulo-dorado"><c:out value="${usuarioActual.rol}"/></div>
                     </div>
                 </div>
-                <%-- TODO núcleo: con el login, formulario POST /logout con <n:csrf/> --%>
-                <button type="button" class="btn sij-btn-salir w-100 text-start" disabled>&#8614; Cerrar sesión</button>
+                <form method="post" action="<c:url value='/logout'/>">
+                    <n:csrf/>
+                    <button type="submit" class="btn sij-btn-salir w-100 text-start">&#8614; Cerrar sesión</button>
+                </form>
             </div>
         </div>
     </aside>
@@ -132,7 +138,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="<c:url value='/recursos/nucleo/js/comun.js'/>"></script>
+<script src="<c:url value='/recursos/nucleo/js/comun.js?v=2'/>"></script>
 <jsp:invoke fragment="scripts"/>
 </body>
 </html>

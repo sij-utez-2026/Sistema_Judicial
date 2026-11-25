@@ -361,3 +361,45 @@ a.sij-tarjeta:focus-visible {
     --bs-pagination-active-border-color: var(--sij-primario);
     --bs-pagination-focus-box-shadow: 0 0 0 .2rem rgba(31, 58, 44, .15);
 }
+
+/* ===================== Campo de contraseña con ojo (<n:contrasena>) ===================== */
+.sij-campo-contrasena {
+    position: relative;
+}
+
+.sij-campo-contrasena .form-control {
+    padding-right: 2.75rem;
+}
+
+.sij-ver-contrasena {
+    position: absolute;
+    top: 50%;
+    right: .35rem;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    padding: 0;
+    border: 0;
+    border-radius: .375rem;
+    background: transparent;
+    color: var(--sij-texto-suave);
+}
+
+.sij-ver-contrasena:hover,
+.sij-ver-contrasena[aria-pressed="true"] {
+    color: var(--sij-primario);
+}
+
+.sij-ver-contrasena:focus-visible {
+    outline: 2px solid var(--sij-acento);
+    outline-offset: 1px;
+}
+
+/* Edge pone su propio ojo en los campos de contraseña: se quita para que no salgan dos */
+.sij-campo-contrasena input::-ms-reveal,
+.sij-campo-contrasena input::-ms-clear {
+    display: none;
+}
