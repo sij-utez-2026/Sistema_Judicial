@@ -45,21 +45,21 @@
                         <input id="correo" name="correo" type="email" maxlength="150" class="form-control${not empty errores.correo ? ' is-invalid' : ''}"
                                value="<c:out value='${peritoForm.correo}'/>">
                         <n:error campo="correo"/>
-                        <div class="form-text">No se podrá cambiar después del registro.</div>
+                        <div class="form-text">Con este correo iniciará sesión. No se podrá cambiar después del registro.</div>
                     </div>
+                    <%-- N1: Perito o Perito Administrador (este además administra el módulo) --%>
                     <div class="col-md-6">
-                        <label for="telefono" class="form-label">Teléfono de contacto *</label>
-                        <input id="telefono" name="telefono" type="tel" maxlength="14" placeholder="777 000 0000" data-telefono="data-telefono" class="form-control${not empty errores.telefono ? ' is-invalid' : ''}"
-                               value="<c:out value='${peritoForm.telefono}'/>">
-                        <n:error campo="telefono"/>
+                        <label for="rol" class="form-label">Tipo de usuario *</label>
+                        <select id="rol" name="rol" class="form-select">
+                            <option value="<c:out value='${rolPerito}'/>"${peritoForm.rolSistema eq rolPerito ? ' selected' : ''}>Perito Judicial</option>
+                            <option value="<c:out value='${rolPeritoAdmin}'/>"${peritoForm.rolSistema eq rolPeritoAdmin ? ' selected' : ''}>Perito Administrador</option>
+                        </select>
+                        <div class="form-text">El Perito Administrador atiende sus casos y además administra el módulo.</div>
                     </div>
 
-                    <div class="col-12">
-                        <label for="numeroRegistro" class="form-label">Número de registro *</label>
-                        <input id="numeroRegistro" name="numeroRegistro" type="text" maxlength="8" placeholder="PER-0000" data-mayusculas="data-mayusculas" class="form-control${not empty errores.numeroRegistro ? ' is-invalid' : ''}"
-                               value="<c:out value='${peritoForm.numeroRegistro}'/>">
-                        <n:error campo="numeroRegistro"/>
-                        <div class="form-text">Identificador único dentro del padrón de peritos. No se podrá cambiar después del registro.</div>
+                    <div class="col-12 sij-texto-chico">
+                        El número de registro (PER-0000) y la contraseña temporal los genera el sistema al guardar.
+                        La contraseña se muestra una sola vez: entréguela al perito para su primer inicio de sesión.
                     </div>
                 </div>
             </n:tarjeta>
@@ -89,13 +89,13 @@
                     <div class="d-flex flex-wrap gap-2">
                         <c:forEach var="m" items="${materias}">
                             <span class="per-opcion">
-                                <input type="checkbox" name="materiasIds" value="${m.id}" id="materia${m.id}" autocomplete="off"
-                                       class="btn-check per-materia"${peritoForm.materiasIds.contains(m.id) ? ' checked' : ''}>
+                                <input type="checkbox" name="materias" value="<c:out value='${m.id}'/>" id="materia${m.id}" autocomplete="off"
+                                       class="btn-check per-materia"${peritoForm.materias.contains(m.id) ? ' checked' : ''}>
                                 <label class="btn btn-sm" for="materia${m.id}"><c:out value="${m.nombre}"/></label>
                             </span>
                         </c:forEach>
                     </div>
-                    <n:error campo="materiasIds" clase="text-danger small mt-1"/>
+                    <n:error campo="materias" clase="text-danger small mt-1"/>
                     <div class="form-text" data-contador-materias>Seleccione al menos una materia para la asignación.</div>
                 </fieldset>
 

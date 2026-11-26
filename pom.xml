@@ -65,6 +65,20 @@
             <version>2.0.13</version>
         </dependency>
 
+        <!-- Correo (recuperación de contraseña): API de Jakarta Mail + su implementación (Angus Mail).
+             Tomcat no la trae. Ver nucleo.correo.Correo -->
+        <dependency>
+            <groupId>jakarta.mail</groupId>
+            <artifactId>jakarta.mail-api</artifactId>
+            <version>2.1.3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.angus</groupId>
+            <artifactId>angus-mail</artifactId>
+            <version>2.0.3</version>
+            <scope>runtime</scope>
+        </dependency>
+
         <!-- Pruebas -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
