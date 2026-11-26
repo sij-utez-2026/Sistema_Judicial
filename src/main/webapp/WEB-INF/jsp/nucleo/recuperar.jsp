@@ -4,7 +4,7 @@
 <%@ taglib prefix="n" tagdir="/WEB-INF/tags/nucleo" %>
 <%--
   Recuperación de contraseña (RecuperarServlet). Diseño "Recuperación de contraseña" (docs/modulos/img.png).
-  TEMPORAL: solo muestra el aviso; todavía no se envía el correo.
+  Si la cuenta existe y está activa, se manda el enlace para restablecer (con el correo apagado, sale en la consola).
 --%>
 <t:layout-acceso titulo="Recuperar contraseña">
     <a class="sij-acceso-enlace fw-normal mb-3" href="<c:url value='/login'/>">&larr; Volver al inicio de sesión</a>

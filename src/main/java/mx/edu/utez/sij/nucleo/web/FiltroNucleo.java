@@ -80,7 +80,7 @@ public class FiltroNucleo extends HttpFilter {
         }
 
         // 4. Inicio de sesión y permiso por módulo (docs/ARQUITECTURA.md, sección 10).
-        //    Públicas: /login, /recuperar, /recursos/** (arriba) y /copias/publico/**.
+        //    Públicas: /login, /recuperar, /recuperar/restablecer, /recursos/** (arriba) y /copias/publico/**.
         //    Sin sesión, todo lo demás va a /login. A /<modulo>/** solo entra el administrador general
         //    o quien tiene un rol de ese módulo (PERITAJES_*, COPIAS_*...); si no, 403.
         //    En las páginas de error (dispatch ERROR) se conserva el usuario de la petición original.
@@ -125,7 +125,7 @@ public class FiltroNucleo extends HttpFilter {
 
     // Rutas que no piden sesión (además de /recursos/**, que se atiende arriba)
     private boolean esPublica(String ruta) {
-        return ruta.equals("/login") || ruta.equals("/recuperar")
+        return ruta.equals("/login") || ruta.equals("/recuperar") || ruta.equals("/recuperar/restablecer")
                 || ruta.startsWith("/copias/publico/") || ruta.equals("/copias/publico");
     }
 
