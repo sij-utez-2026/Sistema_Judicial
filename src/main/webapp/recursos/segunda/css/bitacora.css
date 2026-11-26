@@ -1,0 +1,14 @@
+/* Bitácora de Segunda Instancia (RF 6.2) */
+.sin-celda-detalle {
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sin-sesion-id {
+    word-break: break-all;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+

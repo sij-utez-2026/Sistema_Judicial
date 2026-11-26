@@ -1,0 +1,186 @@
+/* Calendario de agenda (Segunda Instancia) */
+
+.sin-calendario-cabecera {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 4px;
+}
+.sin-calendario-cabecera div {
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--sij-texto-suave);
+    padding: 6px 0;
+    background: var(--sij-primario-claro);
+    border-radius: 6px;
+}
+
+.sin-calendario {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+
+.sin-calendario-dia {
+    background: #fff;
+    border: 1px solid var(--sij-borde);
+    border-radius: 6px;
+    min-height: 110px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+}
+.sin-calendario-mensual .sin-calendario-dia {
+    min-height: 90px;
+}
+
+.sin-calendario-numero {
+    align-self: flex-end;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--sij-texto-suave);
+    margin-bottom: 4px;
+}
+
+.sin-calendario-eventos {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    overflow-y: auto;
+}
+
+.sin-calendario-evento {
+    display: flex;
+    gap: 4px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    background: var(--sij-primario-claro);
+    border-left: 3px solid var(--sij-acento);
+    color: var(--sij-primario);
+    text-decoration: none;
+    font-size: 0.75rem;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.sin-calendario-evento:hover {
+    background: #f7f3e6;
+}
+.sin-calendario-hora {
+    font-weight: 700;
+}
+.sin-calendario-folio {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sin-calendario-evento.estado-CANCELADA {
+    background: #fbefed;
+    border-left-color: #b3412f;
+    color: #742a2a;
+}
+.sin-calendario-evento.estado-REALIZADA {
+    background: var(--sij-primario-claro);
+    border-left-color: var(--sij-primario);
+    color: var(--sij-primario);
+}
+
+
+
+/* Ajustes de rediseño: conservar únicamente la paleta SIJ y mejorar lectura responsive. */
+.sin-calendario-cabecera,
+.sin-calendario {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 5px;
+}
+
+.sin-calendario-cabecera {
+    margin-bottom: 5px;
+}
+
+.sin-calendario-cabecera div {
+    padding: .55rem .2rem;
+    border: 1px solid var(--sij-borde);
+    border-radius: .45rem;
+    background: var(--sij-primario-claro);
+    color: var(--sij-primario);
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .035em;
+}
+
+.sin-calendario-dia {
+    min-width: 0;
+    padding: .5rem;
+    border-color: var(--sij-borde);
+    border-radius: .5rem;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.sin-calendario-dia:hover {
+    border-color: var(--sij-acento);
+    box-shadow: 0 .2rem .55rem rgba(31, 58, 44, .06);
+}
+
+.sin-calendario-numero {
+    color: var(--sij-texto-suave);
+}
+
+.sin-calendario-evento {
+    min-width: 0;
+    gap: .35rem;
+    padding: .28rem .4rem;
+    border: 1px solid var(--sij-borde);
+    border-left: 3px solid var(--sij-acento);
+    border-radius: .35rem;
+    background: var(--sij-primario-claro);
+    color: var(--sij-primario);
+    font-size: .72rem;
+}
+
+.sin-calendario-evento:hover,
+.sin-calendario-evento:focus-visible {
+    border-color: var(--sij-acento);
+    background: #f7f3e6;
+    color: var(--sij-primario);
+}
+
+.sin-calendario-evento.estado-CANCELADA {
+    border-left-color: #b3412f;
+    background: #fbefed;
+    color: #742a2a;
+}
+
+.sin-calendario-evento.estado-REALIZADA {
+    border-left-color: var(--sij-primario);
+    background: var(--sij-primario-claro);
+    color: var(--sij-primario);
+}
+
+@media (max-width: 767.98px) {
+    .sin-calendario-cabecera,
+    .sin-calendario {
+        gap: 3px;
+    }
+
+    .sin-calendario-dia,
+    .sin-calendario-mensual .sin-calendario-dia {
+        min-height: 72px;
+        padding: .3rem;
+    }
+
+    .sin-calendario-cabecera div {
+        padding: .35rem .1rem;
+        font-size: .64rem;
+    }
+
+    .sin-calendario-evento {
+        padding: .2rem .25rem;
+        font-size: .65rem;
+    }
+
+    .sin-calendario-evento .sin-calendario-hora {
+        display: none;
+    }
+}
