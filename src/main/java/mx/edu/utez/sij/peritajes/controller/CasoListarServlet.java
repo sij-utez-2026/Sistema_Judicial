@@ -34,7 +34,7 @@ public class CasoListarServlet extends HttpServlet {
         }
         dao.recibirSolicitudes();
         String q = Parametros.texto(request, "q");
-        String materia = Parametros.texto(request, "materia");
+        Long materia = Parametros.numero(request, "materia");   // id_materia
         EstadoPeritaje estado = EstadoPeritaje.deTexto(Parametros.texto(request, "estado"));
         Long peritoId = Parametros.numero(request, "peritoId");
         int page = Parametros.entero(request, "page", 0);

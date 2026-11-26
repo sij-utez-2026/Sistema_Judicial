@@ -18,7 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 // No usan la base de datos: el correo repetido y las materias del catálogo los revisa PeritoDao.
 class PeritoFormSupportTest {
 
-    private Perito perito(String nombre, String correo, String... materias) {
+    // materias: ids de materia_Ofc (por ejemplo 1 = Civil, 2 = Familiar)
+    private Perito perito(String nombre, String correo, Long... materias) {
         Perito perito = new Perito();
         perito.setNombre(nombre);
         perito.setApellidoPaterno("Neri");
@@ -32,7 +33,7 @@ class PeritoFormSupportTest {
 
     @Test
     void normalizaLosDatosDelRegistro() {
-        Perito datos = perito(" Sofía ", " Sofia.Neri@PJ.mx ", "FAM");
+        Perito datos = perito(" Sofía ", " Sofia.Neri@PJ.mx ", 2L);
         datos.setApellidoMaterno("  ");
 
         assertNull(PeritoFormSupport.validar(datos, true));
@@ -45,7 +46,7 @@ class PeritoFormSupportTest {
 
     @Test
     void elRegistroExigeUnRolDePerito() {
-        Perito datos = perito("Ana", "ana@pj.mx", "CIV");
+        Perito datos = perito("Ana", "ana@pj.mx", 1L);
         datos.setRolSistema(UsuarioPeritajes.ADMIN);
         assertEquals("Seleccione si el perito será Perito o Perito Administrador",
                 PeritoFormSupport.validar(datos, true));
@@ -56,7 +57,7 @@ class PeritoFormSupportTest {
 
     @Test
     void limpiaEspecialidadesVaciasYRepetidas() {
-        Perito datos = perito("Ana", "ana@pj.mx", "CIV");
+        Perito datos = perito("Ana", "ana@pj.mx", 1L);
         datos.setEspecialidades(new ArrayList<>(Arrays.asList(" Psicología ", "", null, "psicología", "Grafología")));
 
         assertNull(PeritoFormSupport.validar(datos, true));
@@ -65,7 +66,7 @@ class PeritoFormSupportTest {
 
     @Test
     void exigeAlMenosUnaEspecialidad() {
-        Perito datos = perito("Ana", "ana@pj.mx", "CIV");
+        Perito datos = perito("Ana", "ana@pj.mx", 1L);
         datos.setEspecialidades(new ArrayList<>(List.of(" ", "")));
 
         assertTrue(Validador.validar(datos).containsKey("especialidadCapturada"));
@@ -85,7 +86,7 @@ class PeritoFormSupportTest {
 
     @Test
     void elNumeroDeRegistroSaleDelId() {
-        Perito datos = perito("Ana", "ana@pj.mx", "CIV");
+        Perito datos = perito("Ana", "ana@pj.mx", 1L);
         datos.setId(5L);
         assertEquals("PER-0005", datos.getNumeroRegistro());
     }

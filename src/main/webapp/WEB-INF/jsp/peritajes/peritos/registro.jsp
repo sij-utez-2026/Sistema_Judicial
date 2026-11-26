@@ -89,9 +89,9 @@
                     <div class="d-flex flex-wrap gap-2">
                         <c:forEach var="m" items="${materias}">
                             <span class="per-opcion">
-                                <input type="checkbox" name="materias" value="<c:out value='${m.clave}'/>" id="materia${m.clave}" autocomplete="off"
-                                       class="btn-check per-materia"${peritoForm.materias.contains(m.clave) ? ' checked' : ''}>
-                                <label class="btn btn-sm" for="materia${m.clave}"><c:out value="${m.nombre}"/></label>
+                                <input type="checkbox" name="materias" value="<c:out value='${m.id}'/>" id="materia${m.id}" autocomplete="off"
+                                       class="btn-check per-materia"${peritoForm.materias.contains(m.id) ? ' checked' : ''}>
+                                <label class="btn btn-sm" for="materia${m.id}"><c:out value="${m.nombre}"/></label>
                             </span>
                         </c:forEach>
                     </div>

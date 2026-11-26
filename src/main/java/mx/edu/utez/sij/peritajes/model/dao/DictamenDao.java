@@ -272,6 +272,8 @@ public class DictamenDao {
                     con.rollback();
                     return "El dictamen solo se puede entregar cuando el peritaje está En Proceso";
                 }
+                // Dictamen Entregado ya no es carga activa: se le resta al perito
+                PeritajeDao.actualizarCarga(con, peritaje.getPeritoId());
                 bitacoraDao.registrar(con, usuario, BitacoraDao.ENTREGA_DICTAMEN, peritaje.getFolio(),
                         "Entrega definitiva confirmada por el perito. En Proceso → Dictamen Entregado. "
                                 + "Contenido y archivos inmutables.");
