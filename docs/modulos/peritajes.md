@@ -232,7 +232,10 @@ Los hace el **núcleo** para todo el sistema (propuesta del Equipo 3 a los integ
 - Al entrar: el administrador general va a `/` (los cinco módulos); los demás, directo a su módulo según el inicio de su rol (`PERITAJES_*` → `/peritajes`).
 - `FiltroNucleo`: sin sesión manda a `/login`; a `/<modulo>/**` solo entran el administrador general y los roles de ese módulo (403 si no). En cada petición vuelve a leer al usuario: si lo dieron de baja, pierde la sesión.
 - `/cuenta/password`: cambio de contraseña con la sesión iniciada (actual, nueva y confirmación). Se cambia en la tabla `user_*` del usuario y el trigger la copia a `Login`.
-- `/recuperar`: pantalla "Recupere su acceso". Por ahora **solo muestra el aviso** "Solicitud recibida" (no hay correo todavía).
+- `/recuperar`: pantalla "Recupere su acceso". Siempre muestra el mismo aviso "Solicitud recibida", exista o no la cuenta.
+  - Si el correo es de una cuenta **activa**, manda un enlace a `/recuperar/restablecer?token=...`: sirve **una sola vez** y vence en **15 minutos** (`TokenRecuperacion`, en memoria). Pedir otro invalida el anterior.
+  - En `/recuperar/restablecer` se escribe la contraseña nueva (misma regla que 1.2). Se guarda en la tabla `user_*` (el trigger la copia a `Login`) y se quita el bloqueo por intentos.
+  - El correo lo envía `nucleo/correo/Correo` (Jakarta Mail). Configuración en `src/main/resources/correo.properties` (no se sube; copiar `correo.example.properties`). Con `correo.activo=false` no se envía: el mensaje con el enlace sale en la consola de Tomcat.
 - `/logout`: botón "Cerrar sesión" del layout.
 - Peritajes (`PeritajesAuth`) solo revisa el permiso de cada pantalla con el usuario del núcleo (`Acceso.usuario(request)`).
 
@@ -284,7 +287,7 @@ Los hace el **núcleo** para todo el sistema (propuesta del Equipo 3 a los integ
 
 `AG` = administrador general (`SISTEMA_ADMIN`): entra a todo lo de `ADM` y a nada de `/peritajes/mis-casos/**` (no ve dictámenes).
 Sin sesión, `FiltroNucleo` manda a `/login`. Con sesión pero sin el rol: 403. El menú lateral (`menu.jsp`) solo muestra las opciones del rol.
-El login, la recuperación, el cambio de contraseña y el cierre de sesión son rutas del núcleo (`/login`, `/recuperar`, `/cuenta/password`, `/logout`).
+El login, la recuperación, el cambio de contraseña y el cierre de sesión son rutas del núcleo (`/login`, `/recuperar`, `/recuperar/restablecer`, `/cuenta/password`, `/logout`).
 
 ---
 
@@ -316,9 +319,11 @@ docs/modulos/                           peritajes-bd-script-corregido.sql  perit
 
 Propuesta para el núcleo (B1-a, la revisan los integradores):
 src/main/java/mx/edu/utez/sij/nucleo/acceso/   Contrasena, UsuarioSesion, Acceso, AccesoDao, ResultadoAcceso,
-                                        LoginServlet, LogoutServlet, RecuperarServlet, CuentaPasswordServlet
+                                        LoginServlet, LogoutServlet, RecuperarServlet, CuentaPasswordServlet,
+                                        RestablecerServlet, TokenRecuperacion
+src/main/java/mx/edu/utez/sij/nucleo/correo/   Correo (Jakarta Mail; configuración en correo.properties)
 src/main/java/mx/edu/utez/sij/nucleo/web/      FiltroNucleo (sesión y permiso por módulo), InicioServlet (/ por rol)
-src/main/webapp/WEB-INF/jsp/nucleo/       login.jsp  recuperar.jsp  password.jsp  inicio.jsp
+src/main/webapp/WEB-INF/jsp/nucleo/       login.jsp  recuperar.jsp  restablecer.jsp  password.jsp  inicio.jsp
 src/main/webapp/WEB-INF/tags/             layout-acceso.tag (nuevo)  layout.tag (cerrar sesión y cambiar contraseña)
                                         layout.tag, layout-publico.tag y layout-acceso.tag: ?v= en estilos.css y comun.js
 src/main/webapp/WEB-INF/tags/nucleo/      contrasena.tag (nuevo: campo con ojo)  icono.tag (íconos ojo y ojo-tachado)
@@ -367,7 +372,7 @@ src/main/java/mx/edu/utez/sij/nucleo/bd/       ConexionBD (quita espacios al fin
   - los roles de la tabla `Rol` empiezan con el nombre de su módulo (`OFICIALIA_`, `AUDIENCIAS_`, `PERITAJES_`, `SEGUNDA_`, `COPIAS_`);
   - el administrador general (`SISTEMA_ADMIN`) vive en `user_Ofc`;
   - con este cambio, las pantallas de **todos** los módulos piden iniciar sesión.
-- Recuperación de contraseña por correo: hoy `/recuperar` solo muestra el aviso.
+- Recuperación de contraseña por correo: hecha (propuesta al núcleo, 6.8). Falta que los integradores la acepten, junto con la dependencia de Jakarta Mail en el `pom.xml`.
 - Mensajes de confirmación de 3.1, 3.3 y 3.4: el DFR no da el texto exacto; hoy se usan los de la sección 6.7.
 - ¿Al menos un anexo obligatorio al finalizar? (hoy son opcionales).
 - Cancelación de solicitudes con el Equipo 2 (pendiente 10). La columna `fecha_cancelacion` ya existe. Al cancelar hay que llamar `PeritajeDao.actualizarCarga` para restarle el peritaje al perito.

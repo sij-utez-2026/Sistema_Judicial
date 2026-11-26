@@ -169,6 +169,73 @@ public class AccesoDao {
         }
     }
 
+    /**
+     * Recuperación de contraseña: el correo tal como está guardado, si es de una cuenta ACTIVA de algún
+     * módulo; si no, null (no existe o está dada de baja: no se manda nada).
+     */
+    public String correoParaRecuperar(String correo) {
+        if (correo == null || correo.isBlank()) {
+            return null;
+        }
+        try (Connection con = ConexionBD.obtener()) {
+            for (String tabla : TABLAS) {
+                try (PreparedStatement ps = con.prepareStatement(
+                        "SELECT correo FROM " + tabla + " WHERE correo = ? AND Status = TRUE")) {
+                    ps.setString(1, correo.trim());
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            return rs.getString(1);
+                        }
+                    }
+                }
+            }
+            return null;
+        } catch (SQLException e) {
+            throw new IllegalStateException("No se pudo revisar el correo", e);
+        }
+    }
+
+    /**
+     * Nueva contraseña desde el enlace de recuperación (sin la actual: el enlace demuestra que el correo es suyo).
+     * Se cambia en la tabla user_* (el trigger AFTER UPDATE la copia a Login) y se quita el bloqueo por
+     * intentos fallidos. Regresa el error, o null si se cambió.
+     */
+    public String restablecerContrasena(String correo, String nueva, String confirmacion) {
+        String error = Contrasena.validarNueva(nueva);
+        if (error != null) {
+            return error;
+        }
+        if (!nueva.equals(confirmacion)) {
+            return "La confirmación no coincide con la contraseña nueva";
+        }
+        try (Connection con = ConexionBD.obtener()) {
+            con.setAutoCommit(false);
+            try {
+                int filas = 0;
+                for (String tabla : TABLAS) {
+                    try (PreparedStatement ps = con.prepareStatement(
+                            "UPDATE " + tabla + " SET contrasena = ? WHERE correo = ? AND Status = TRUE")) {
+                        ps.setString(1, Contrasena.cifrar(nueva));
+                        ps.setString(2, correo);
+                        filas += ps.executeUpdate();
+                    }
+                }
+                if (filas == 0) {
+                    con.rollback();
+                    return "La cuenta ya no está activa. Comuníquese con el administrador de su módulo";
+                }
+                actualizarIntentos(con, correo, 0, null);
+                con.commit();
+                return null;
+            } catch (SQLException | RuntimeException e) {
+                con.rollback();
+                throw e;
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("No se pudo restablecer la contraseña", e);
+        }
+    }
+
     private void actualizarIntentos(Connection con, String correo, int intentos, LocalDateTime bloqueadoHasta)
             throws SQLException {
         try (PreparedStatement ps = con.prepareStatement(
