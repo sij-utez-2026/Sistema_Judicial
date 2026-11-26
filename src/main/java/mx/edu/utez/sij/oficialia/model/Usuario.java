@@ -1,35 +1,36 @@
 package mx.edu.utez.sij.oficialia.model;
 
-
 import java.io.Serializable;
 
 public class Usuario implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private int id;
+    private long id;
     private String nombre;
+    private String apellidoPaterno;
+    private String apellidoMaterno;
     private String correo;
-    private String contrasena;
     private String rol;
-    private String iniciales;
+    private boolean activo;
 
     public Usuario() {
+        this.activo = true;
     }
 
-    public Usuario(int id, String nombre, String correo, String contrasena, String rol, String iniciales) {
-        this.id = id;
+    public Usuario(String nombre, String apellidoPaterno, String apellidoMaterno, String correo, String rol) {
         this.nombre = nombre;
+        this.apellidoPaterno = apellidoPaterno;
+        this.apellidoMaterno = apellidoMaterno;
         this.correo = correo;
-        this.contrasena = contrasena;
         this.rol = rol;
-        this.iniciales = iniciales;
+        this.activo = true;
     }
 
-    public int getId() {
+    public long getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(long id) {
         this.id = id;
     }
 
@@ -41,20 +42,28 @@ public class Usuario implements Serializable {
         this.nombre = nombre;
     }
 
+    public String getApellidoPaterno() {
+        return apellidoPaterno;
+    }
+
+    public void setApellidoPaterno(String apellidoPaterno) {
+        this.apellidoPaterno = apellidoPaterno;
+    }
+
+    public String getApellidoMaterno() {
+        return apellidoMaterno;
+    }
+
+    public void setApellidoMaterno(String apellidoMaterno) {
+        this.apellidoMaterno = apellidoMaterno;
+    }
+
     public String getCorreo() {
         return correo;
     }
 
     public void setCorreo(String correo) {
         this.correo = correo;
-    }
-
-    public String getContrasena() {
-        return contrasena;
-    }
-
-    public void setContrasena(String contrasena) {
-        this.contrasena = contrasena;
     }
 
     public String getRol() {
@@ -65,12 +74,27 @@ public class Usuario implements Serializable {
         this.rol = rol;
     }
 
-    public String getIniciales() {
-        return iniciales;
+    public boolean isActivo() {
+        return activo;
     }
 
-    public void setIniciales(String iniciales) {
-        this.iniciales = iniciales;
+    public void setActivo(boolean activo) {
+        this.activo = activo;
+    }
+
+    public String getNombreCompleto() {
+        StringBuilder sb = new StringBuilder();
+        if (nombre != null && !nombre.isBlank()) {
+            sb.append(nombre.trim());
+        }
+        if (apellidoPaterno != null && !apellidoPaterno.isBlank()) {
+            if (!sb.isEmpty()) sb.append(' ');
+            sb.append(apellidoPaterno.trim());
+        }
+        if (apellidoMaterno != null && !apellidoMaterno.isBlank()) {
+            if (!sb.isEmpty()) sb.append(' ');
+            sb.append(apellidoMaterno.trim());
+        }
+        return sb.toString();
     }
 }
-

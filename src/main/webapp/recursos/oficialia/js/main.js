@@ -1,12 +1,12 @@
 /**
- * JavaScript para Oficialía de Partes - Poder Judicial de Morelos
- * Diseños actualizados - Figma Noviembre 2026
+ * JavaScript para Oficialía de Partes - Poder Judicial del Estado de Morelos
  */
 
 document.addEventListener("DOMContentLoaded", function () {
     initModals();
     initLiveSearch();
-    initPasswordToggle();
+    initActionButtons();
+    initLogoPreview();
 });
 
 /* =========================================================
@@ -17,10 +17,9 @@ function openModal(modalId) {
     if (modal) {
         modal.classList.add("active");
         document.body.style.overflow = "hidden";
-        // Autoenfoque en primer input
-        const firstInput = modal.querySelector("input:not([type=hidden]), textarea, select");
+        const firstInput = modal.querySelector("input:not([type=hidden]):not([readonly]), textarea, select");
         if (firstInput) {
-            setTimeout(() => firstInput.focus(), 100);
+            setTimeout(() => firstInput.focus(), 80);
         }
     }
 }
@@ -34,18 +33,22 @@ function closeModal(modalId) {
 }
 
 function initModals() {
-    // Cerrar con botones de cerrar modal
-    document.querySelectorAll(".modal-close, [data-close-modal], .btn-close, .ofi-modal-close").forEach(btn => {
+    document.querySelectorAll("[data-open-modal]").forEach(btn => {
         btn.addEventListener("click", function () {
-            const backdrop = this.closest(".modal-backdrop, .ofi-modal-backdrop");
+            openModal(this.dataset.openModal);
+        });
+    });
+
+    document.querySelectorAll("[data-close-modal], .ofi-modal-close").forEach(btn => {
+        btn.addEventListener("click", function () {
+            const backdrop = this.closest(".ofi-modal-backdrop");
             if (backdrop) {
                 closeModal(backdrop.id);
             }
         });
     });
 
-    // Cerrar al hacer click fuera de la tarjeta modal
-    document.querySelectorAll(".modal-backdrop, .ofi-modal-backdrop").forEach(backdrop => {
+    document.querySelectorAll(".ofi-modal-backdrop").forEach(backdrop => {
         backdrop.addEventListener("click", function (e) {
             if (e.target === this) {
                 closeModal(this.id);
@@ -53,10 +56,9 @@ function initModals() {
         });
     });
 
-    // Cerrar con Escape
     document.addEventListener("keydown", function (e) {
         if (e.key === "Escape") {
-            document.querySelectorAll(".modal-backdrop.active, .ofi-modal-backdrop.active").forEach(modal => {
+            document.querySelectorAll(".ofi-modal-backdrop.active").forEach(modal => {
                 closeModal(modal.id);
             });
         }
@@ -64,19 +66,19 @@ function initModals() {
 }
 
 /* =========================================================
-   BÚSQUEDA Y FILTRADO EN TIEMPO REAL EN TABLAS
+   BÚSQUEDA EN TIEMPO REAL EN TABLAS
    ========================================================= */
 function initLiveSearch() {
     const searchInputs = document.querySelectorAll(".search-input");
     searchInputs.forEach(input => {
         input.addEventListener("input", function () {
             const query = this.value.toLowerCase().trim();
-            const container = this.closest(".table-card, .sij-tarjeta");
+            const container = this.closest(".sij-tarjeta");
             if (!container) return;
-            const table = container.querySelector(".custom-table, .sij-tabla");
+            const table = container.querySelector(".sij-tabla");
             if (!table) return;
 
-            const rows = table.querySelectorAll("tbody tr");
+            const rows = table.querySelectorAll("tbody tr[data-fila]");
             let visibleCount = 0;
 
             rows.forEach(row => {
@@ -89,10 +91,9 @@ function initLiveSearch() {
                 }
             });
 
-            // Actualizar badges de conteo
-            const counterBadge = container.querySelector(".table-records-badge, .sij-contador");
+            const counterBadge = container.querySelector(".table-records-badge");
             if (counterBadge) {
-                counterBadge.textContent = `${visibleCount} registro${visibleCount === 1 ? '' : 's'}`;
+                counterBadge.textContent = `${visibleCount} registro${visibleCount === 1 ? "" : "s"}`;
             }
 
             const footerBadge = container.querySelector(".table-footer");
@@ -104,111 +105,118 @@ function initLiveSearch() {
 }
 
 /* =========================================================
-   TOGGLE DE VER CONTRASEÑA EN LOGIN
+   BOTONES DE EDICIÓN, ELIMINACIÓN Y ASIGNACIÓN DE ADMIN
    ========================================================= */
-function initPasswordToggle() {
-    const toggleBtns = document.querySelectorAll(".password-toggle-btn");
-    toggleBtns.forEach(btn => {
-        btn.addEventListener("click", function (e) {
-            e.preventDefault();
-            const parent = this.closest(".ofi-input-group, .input-group");
-            const input = parent ? parent.querySelector("input") : this.previousElementSibling;
-            if (input && (input.type === "password" || input.type === "text")) {
-                if (input.type === "password") {
-                    input.type = "text";
-                    this.setAttribute("title", "Ocultar contraseña");
-                } else {
-                    input.type = "password";
-                    this.setAttribute("title", "Mostrar contraseña");
-                }
+function initActionButtons() {
+    // Distritos
+    document.querySelectorAll("[data-editar-distrito]").forEach(btn => {
+        btn.addEventListener("click", function () {
+            const { clave, nombre, cabecera } = this.dataset;
+            document.getElementById("edit-distrito-clave-hidden").value = clave || "";
+            document.getElementById("edit-distrito-clave-display").value = clave || "";
+            document.getElementById("edit-distrito-nombre").value = nombre || "";
+            const cab = document.getElementById("edit-distrito-cabecera");
+            if (cab) cab.value = cabecera || "";
+            openModal("modalEditarDistrito");
+        });
+    });
+
+    document.querySelectorAll("[data-eliminar-distrito]").forEach(btn => {
+        btn.addEventListener("click", function () {
+            const { clave, nombre } = this.dataset;
+            document.getElementById("delete-distrito-clave").value = clave || "";
+            document.getElementById("delete-distrito-nombre").textContent = `${clave} - ${nombre}`;
+            openModal("modalEliminarDistrito");
+        });
+    });
+
+    // Juzgados
+    document.querySelectorAll("[data-editar-juzgado]").forEach(btn => {
+        btn.addEventListener("click", function () {
+            const { clave, nombre, clavedistrito } = this.dataset;
+            document.getElementById("edit-juzgado-clave-hidden").value = clave || "";
+            document.getElementById("edit-juzgado-clave-display").value = clave || "";
+            document.getElementById("edit-juzgado-nombre").value = nombre || "";
+            document.getElementById("edit-juzgado-distrito").value = clavedistrito || "";
+            openModal("modalEditarJuzgado");
+        });
+    });
+
+    document.querySelectorAll("[data-eliminar-juzgado]").forEach(btn => {
+        btn.addEventListener("click", function () {
+            const { clave, nombre } = this.dataset;
+            document.getElementById("delete-juzgado-clave").value = clave || "";
+            document.getElementById("delete-juzgado-nombre").textContent = `${clave} - ${nombre}`;
+            openModal("modalEliminarJuzgado");
+        });
+    });
+
+    // Oficialías
+    document.querySelectorAll("[data-editar-oficialia]").forEach(btn => {
+        btn.addEventListener("click", function () {
+            const { clave, nombre, clavejuzgado } = this.dataset;
+            document.getElementById("edit-oficialia-clave-hidden").value = clave || "";
+            document.getElementById("edit-oficialia-clave-display").value = clave || "";
+            document.getElementById("edit-oficialia-nombre").value = nombre || "";
+            document.getElementById("edit-oficialia-juzgado").value = clavejuzgado || "";
+            openModal("modalEditarOficialia");
+        });
+    });
+
+    document.querySelectorAll("[data-asignar-admin]").forEach(btn => {
+        btn.addEventListener("click", function () {
+            const { clave, nombre, admin } = this.dataset;
+            document.getElementById("assign-oficialia-clave").value = clave || "";
+            document.getElementById("assign-oficialia-nombre").textContent = `${clave} - ${nombre}`;
+            const actualEl = document.getElementById("assign-admin-actual");
+            if (actualEl) {
+                actualEl.textContent = admin ? `Administrador actual: ${admin}` : "Sin administrador asignado";
             }
+            openModal("modalAsignarAdmin");
+        });
+    });
+
+    document.querySelectorAll("[data-eliminar-oficialia]").forEach(btn => {
+        btn.addEventListener("click", function () {
+            const { clave, nombre } = this.dataset;
+            document.getElementById("delete-oficialia-clave").value = clave || "";
+            document.getElementById("delete-oficialia-nombre").textContent = `${clave} - ${nombre}`;
+            openModal("modalEliminarOficialia");
+        });
+    });
+
+    // Materias
+    document.querySelectorAll("[data-editar-materia]").forEach(btn => {
+        btn.addEventListener("click", function () {
+            const { clave, nombre, descripcion } = this.dataset;
+            document.getElementById("edit-materia-clave-hidden").value = clave || "";
+            document.getElementById("edit-materia-clave-display").value = clave || "";
+            document.getElementById("edit-materia-nombre").value = nombre || "";
+            document.getElementById("edit-materia-desc").value = descripcion || "";
+            openModal("modalEditarMateria");
+        });
+    });
+
+    document.querySelectorAll("[data-eliminar-materia]").forEach(btn => {
+        btn.addEventListener("click", function () {
+            const { clave, nombre } = this.dataset;
+            document.getElementById("delete-materia-clave").value = clave || "";
+            document.getElementById("delete-materia-nombre").textContent = `${clave} - ${nombre}`;
+            openModal("modalEliminarMateria");
         });
     });
 }
 
 /* =========================================================
-   HELPERS DE EDICIÓN Y ELIMINACIÓN DE REGISTROS
+   VISTA PREVIA DE LOGOTIPO EN PERSONALIZACIÓN
    ========================================================= */
-function prepararEditarDistrito(clave, nombre) {
-    const hidden = document.getElementById("edit-distrito-clave-hidden");
-    const display = document.getElementById("edit-distrito-clave-display");
-    const nameInput = document.getElementById("edit-distrito-nombre");
-    if (hidden) hidden.value = clave;
-    if (display) display.value = clave;
-    if (nameInput) nameInput.value = nombre;
-    openModal("modalEditarDistrito");
-}
-
-function prepararEliminarDistrito(clave, nombre) {
-    const claveInput = document.getElementById("delete-distrito-clave");
-    const nameBox = document.getElementById("delete-distrito-nombre");
-    if (claveInput) claveInput.value = clave;
-    if (nameBox) nameBox.textContent = `${clave} - ${nombre}`;
-    openModal("modalEliminarDistrito");
-}
-
-function prepararEditarJuzgado(clave, nombre, distrito, estado) {
-    const hidden = document.getElementById("edit-juzgado-clave-hidden");
-    const display = document.getElementById("edit-juzgado-clave-display");
-    const nameInput = document.getElementById("edit-juzgado-nombre");
-    const distSelect = document.getElementById("edit-juzgado-distrito");
-    const stInput = document.getElementById("edit-juzgado-estado");
-    if (hidden) hidden.value = clave;
-    if (display) display.value = clave;
-    if (nameInput) nameInput.value = nombre;
-    if (distSelect) distSelect.value = distrito;
-    if (stInput && estado) stInput.value = estado;
-    openModal("modalEditarJuzgado");
-}
-
-function prepararEliminarJuzgado(clave, nombre) {
-    const claveInput = document.getElementById("delete-juzgado-clave");
-    const nameBox = document.getElementById("delete-juzgado-nombre");
-    if (claveInput) claveInput.value = clave;
-    if (nameBox) nameBox.textContent = `${clave} - ${nombre}`;
-    openModal("modalEliminarJuzgado");
-}
-
-function prepararEditarOficialia(clave, nombre, juzgado, estado) {
-    const hidden = document.getElementById("edit-oficialia-clave-hidden");
-    const display = document.getElementById("edit-oficialia-clave-display");
-    const nameInput = document.getElementById("edit-oficialia-nombre");
-    const juzSelect = document.getElementById("edit-oficialia-juzgado");
-    const stInput = document.getElementById("edit-oficialia-estado");
-    if (hidden) hidden.value = clave;
-    if (display) display.value = clave;
-    if (nameInput) nameInput.value = nombre;
-    if (juzSelect) juzSelect.value = juzgado;
-    if (stInput && estado) stInput.value = estado;
-    openModal("modalEditarOficialia");
-}
-
-function prepararEliminarOficialia(clave, nombre) {
-    const claveInput = document.getElementById("delete-oficialia-clave");
-    const nameBox = document.getElementById("delete-oficialia-nombre");
-    if (claveInput) claveInput.value = clave;
-    if (nameBox) nameBox.textContent = `${clave} - ${nombre}`;
-    openModal("modalEliminarOficialia");
-}
-
-function prepararEditarMateria(clave, nombre, descripcion, estado) {
-    const hidden = document.getElementById("edit-materia-clave-hidden");
-    const display = document.getElementById("edit-materia-clave-display");
-    const nameInput = document.getElementById("edit-materia-nombre");
-    const descInput = document.getElementById("edit-materia-desc");
-    const stInput = document.getElementById("edit-materia-estado");
-    if (hidden) hidden.value = clave;
-    if (display) display.value = clave;
-    if (nameInput) nameInput.value = nombre;
-    if (descInput) descInput.value = descripcion;
-    if (stInput && estado) stInput.value = estado;
-    openModal("modalEditarMateria");
-}
-
-function prepararEliminarMateria(clave, nombre) {
-    const claveInput = document.getElementById("delete-materia-clave");
-    const nameBox = document.getElementById("delete-materia-nombre");
-    if (claveInput) claveInput.value = clave;
-    if (nameBox) nameBox.textContent = `${clave} - ${nombre}`;
-    openModal("modalEliminarMateria");
+function initLogoPreview() {
+    const fileInput = document.getElementById("input-logo-file");
+    const nombreEl = document.getElementById("nombre-archivo-logo");
+    if (!fileInput || !nombreEl) return;
+    fileInput.addEventListener("change", function () {
+        if (this.files && this.files.length > 0) {
+            nombreEl.textContent = "Archivo seleccionado: " + this.files[0].name;
+        }
+    });
 }

@@ -5,6 +5,9 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import mx.edu.utez.sij.nucleo.web.FlashMessage;
+import mx.edu.utez.sij.nucleo.web.Parametros;
+import mx.edu.utez.sij.nucleo.web.Vistas;
 import mx.edu.utez.sij.oficialia.model.Juzgado;
 import mx.edu.utez.sij.oficialia.model.dao.DistritoDao;
 import mx.edu.utez.sij.oficialia.model.dao.JuzgadoDao;
@@ -12,7 +15,7 @@ import mx.edu.utez.sij.oficialia.model.dao.JuzgadoDao;
 import java.io.IOException;
 import java.util.List;
 
-@WebServlet(name = "JuzgadoServlet", value = "/juzgados.jsp")
+@WebServlet("/oficialia/juzgados")
 public class JuzgadoServlet extends HttpServlet {
 
     private final JuzgadoDao juzgadoDao = new JuzgadoDao();
@@ -21,75 +24,66 @@ public class JuzgadoServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        String query = request.getParameter("q");
-        List<Juzgado> juzgados = juzgadoDao.getAll();
-
-        if (query != null && !query.trim().isEmpty()) {
-            String qLower = query.toLowerCase().trim();
-            juzgados = juzgados.stream()
-                    .filter(j -> j.getClave().toLowerCase().contains(qLower)
-                            || j.getNombre().toLowerCase().contains(qLower)
-                            || j.getDistrito().toLowerCase().contains(qLower)
-                            || (j.getEstado() != null && j.getEstado().toLowerCase().contains(qLower)))
-                    .toList();
+        if (OficialiaAuth.exigirSuperAdmin(request, response) == null) {
+            return;
         }
+        String query = Parametros.texto(request, "q");
+        List<Juzgado> juzgados = juzgadoDao.listar(query);
 
         request.setAttribute("juzgados", juzgados);
-        request.setAttribute("distritos", distritoDao.getAll());
+        request.setAttribute("distritos", distritoDao.listarActivos());
         request.setAttribute("query", query);
-        request.getRequestDispatcher("/juzgados.jsp").forward(request, response);
+        Vistas.mostrar(request, response, "oficialia/juzgados");
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        request.setCharacterEncoding("UTF-8");
-        String action = request.getParameter("action");
+        if (OficialiaAuth.exigirSuperAdmin(request, response) == null) {
+            return;
+        }
+        String action = Parametros.texto(request, "action");
+        String error = null;
 
         if ("crear".equals(action)) {
-            String clave = request.getParameter("clave");
-            String nombre = request.getParameter("nombre");
-            String distrito = request.getParameter("distrito");
-
-            if (juzgadoDao.getById(clave) != null) {
-                response.sendRedirect(request.getContextPath() + "/juzgados.jsp?error=duplicado");
-                return;
+            Juzgado juzgado = new Juzgado(
+                    Parametros.texto(request, "clave"),
+                    Parametros.texto(request, "nombre"),
+                    Parametros.texto(request, "claveDistrito"),
+                    null,
+                    "ACTIVO"
+            );
+            error = juzgadoDao.crear(juzgado);
+            if (error == null) {
+                FlashMessage.exito(request, "Juzgado registrado", "El juzgado quedó activo en el catálogo.");
             }
-
-            Juzgado juzgado = new Juzgado(clave, nombre, distrito, "Activo");
-            juzgadoDao.save(juzgado);
-            response.sendRedirect(request.getContextPath() + "/juzgados.jsp?msg=creado");
-
         } else if ("toggle".equals(action)) {
-            String clave = request.getParameter("clave");
-            Juzgado j = juzgadoDao.getById(clave);
-            if (j != null) {
-                j.setEstado("Activo".equalsIgnoreCase(j.getEstado()) ? "Inactivo" : "Activo");
-                juzgadoDao.update(j);
+            error = juzgadoDao.toggleEstado(Parametros.texto(request, "clave"));
+            if (error == null) {
+                FlashMessage.exito(request, "Estado actualizado", null);
             }
-            response.sendRedirect(request.getContextPath() + "/juzgados.jsp?msg=actualizado");
-
         } else if ("editar".equals(action)) {
-            String clave = request.getParameter("clave");
-            String nombre = request.getParameter("nombre");
-            String distrito = request.getParameter("distrito");
-            String estado = request.getParameter("estado");
-
-            Juzgado j = juzgadoDao.getById(clave);
-            if (j != null) {
-                j.setNombre(nombre);
-                j.setDistrito(distrito);
-                if (estado != null) j.setEstado(estado);
-                juzgadoDao.update(j);
+            Juzgado juzgado = new Juzgado(
+                    Parametros.texto(request, "clave"),
+                    Parametros.texto(request, "nombre"),
+                    Parametros.texto(request, "claveDistrito"),
+                    null,
+                    null
+            );
+            error = juzgadoDao.actualizar(juzgado);
+            if (error == null) {
+                FlashMessage.exito(request, "Juzgado actualizado", null);
             }
-            response.sendRedirect(request.getContextPath() + "/juzgados.jsp?msg=actualizado");
-
         } else if ("eliminar".equals(action)) {
-            String clave = request.getParameter("clave");
-            juzgadoDao.delete(clave);
-            response.sendRedirect(request.getContextPath() + "/juzgados.jsp?msg=eliminado");
-        } else {
-            response.sendRedirect(request.getContextPath() + "/juzgados.jsp");
+            error = juzgadoDao.eliminar(Parametros.texto(request, "clave"));
+            if (error == null) {
+                FlashMessage.exito(request, "Juzgado eliminado", null);
+            }
         }
+
+        if (error != null) {
+            FlashMessage.error(request, error);
+        }
+        Vistas.redirigir(request, response, "/oficialia/juzgados");
     }
 }

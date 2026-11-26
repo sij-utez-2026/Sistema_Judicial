@@ -1,58 +1,58 @@
 package mx.edu.utez.sij.oficialia.controller;
 
-
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
+import mx.edu.utez.sij.nucleo.acceso.UsuarioSesion;
+import mx.edu.utez.sij.nucleo.web.FlashMessage;
+import mx.edu.utez.sij.nucleo.web.Parametros;
+import mx.edu.utez.sij.nucleo.web.Vistas;
 import mx.edu.utez.sij.oficialia.model.Usuario;
 import mx.edu.utez.sij.oficialia.model.dao.UsuarioDao;
 
 import java.io.IOException;
 
-@WebServlet(name = "PersonalizacionServlet", value = "/personalizacion")
+@WebServlet("/oficialia/personalizacion")
 public class PersonalizacionServlet extends HttpServlet {
 
     private final UsuarioDao usuarioDao = new UsuarioDao();
 
-    @Override
+   /* @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        request.getRequestDispatcher("/personalizacion.jsp").forward(request, response);
-    }
+        UsuarioSesion sesion = OficialiaAuth.exigirSuperAdmin(request, response);
+        if (sesion == null) {
+            return;
+        }
+        if (sesion.getId() != null) {
+            request.setAttribute("usuarioPerfil", usuarioDao.buscarPorId(sesion.getId()));
+        }
+        Vistas.mostrar(request, response, "oficialia/personalizacion");
+    }*/
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        request.setCharacterEncoding("UTF-8");
-        HttpSession session = request.getSession(false);
-        if (session != null) {
-            Usuario usuario = (Usuario) session.getAttribute("usuario");
-            if (usuario != null) {
-                String nombre = request.getParameter("nombre");
-                String contrasena = request.getParameter("contrasena");
+        UsuarioSesion sesion = OficialiaAuth.exigirSuperAdmin(request, response);
+        if (sesion == null) {
+            return;
+        }
+        String nombre = Parametros.texto(request, "nombre");
+        String apellidoPaterno = Parametros.texto(request, "apellidoPaterno");
+        String apellidoMaterno = Parametros.texto(request, "apellidoMaterno");
 
-                if (nombre != null && !nombre.trim().isEmpty()) {
-                    usuario.setNombre(nombre.trim());
-                    String[] parts = nombre.trim().split("\\s+");
-                    if (parts.length >= 2) {
-                        usuario.setIniciales(("" + parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase());
-                    }
-                }
-                if (contrasena != null && !contrasena.trim().isEmpty()) {
-                    usuario.setContrasena(contrasena.trim());
-                }
-
-                usuarioDao.update(usuario);
-                session.setAttribute("usuario", usuario);
-                response.sendRedirect(request.getContextPath() + "/personalizacion?msg=ok");
+        if (nombre != null && apellidoPaterno != null && sesion.getId() != null) {
+            String error = usuarioDao.actualizarNombre(sesion.getId(), nombre, apellidoPaterno, apellidoMaterno);
+            if (error != null) {
+                FlashMessage.error(request, error);
+                Vistas.redirigir(request, response, "/oficialia/personalizacion");
                 return;
             }
         }
-        response.sendRedirect(request.getContextPath() + "/personalizacion");
+        FlashMessage.exito(request, "Personalización guardada",
+                "La identidad institucional y preferencias se aplicaron correctamente.");
+        Vistas.redirigir(request, response, "/oficialia/personalizacion");
     }
 }
-
-

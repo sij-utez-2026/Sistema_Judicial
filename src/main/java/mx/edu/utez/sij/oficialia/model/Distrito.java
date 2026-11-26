@@ -1,6 +1,5 @@
 package mx.edu.utez.sij.oficialia.model;
 
-
 import java.io.Serializable;
 
 public class Distrito implements Serializable {
@@ -9,25 +8,17 @@ public class Distrito implements Serializable {
     private String clave;
     private String nombre;
     private String cabecera;
-    private String municipios;
-    private String estado; // "Activo" o "Inactivo"
+    private String estado; // "ACTIVO" o "INACTIVO"
 
     public Distrito() {
-        this.estado = "Activo";
+        this.estado = "ACTIVO";
     }
 
-    public Distrito(String clave, String nombre, String estado) {
-        this.clave = clave;
-        this.nombre = nombre;
-        this.estado = estado != null ? estado : "Activo";
-    }
-
-    public Distrito(String clave, String nombre, String cabecera, String municipios, String estado) {
+    public Distrito(String clave, String nombre, String cabecera, String estado) {
         this.clave = clave;
         this.nombre = nombre;
         this.cabecera = cabecera;
-        this.municipios = municipios;
-        this.estado = estado != null ? estado : "Activo";
+        this.estado = estado != null ? estado : "ACTIVO";
     }
 
     public String getClave() {
@@ -54,16 +45,8 @@ public class Distrito implements Serializable {
         this.cabecera = cabecera;
     }
 
-    public String getMunicipios() {
-        return municipios;
-    }
-
-    public void setMunicipios(String municipios) {
-        this.municipios = municipios;
-    }
-
     public String getEstado() {
-        return estado != null ? estado : "Activo";
+        return estado != null ? estado : "ACTIVO";
     }
 
     public void setEstado(String estado) {
@@ -71,6 +54,10 @@ public class Distrito implements Serializable {
     }
 
     public boolean isActivo() {
-        return "Activo".equalsIgnoreCase(this.estado);
+        return "ACTIVO".equalsIgnoreCase(this.estado);
+    }
+
+    public String getEstadoTexto() {
+        return isActivo() ? "Activo" : "Inactivo";
     }
 }

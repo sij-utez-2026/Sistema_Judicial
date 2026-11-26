@@ -1,6 +1,5 @@
 package mx.edu.utez.sij.oficialia.model;
 
-
 import java.io.Serializable;
 
 public class Oficialia implements Serializable {
@@ -8,31 +7,23 @@ public class Oficialia implements Serializable {
 
     private String clave;
     private String nombre;
+    private String claveJuzgado;
     private String juzgado;
     private String distrito;
-    private String titular;
-    private String horario;
-    private String estado; // "Activo" o "Inactivo"
+    private Long adminId;
+    private String adminNombre;
+    private String adminCorreo;
+    private String estado; // "ACTIVO" o "INACTIVO"
 
     public Oficialia() {
-        this.estado = "Activo";
+        this.estado = "ACTIVO";
     }
 
-    public Oficialia(String clave, String nombre, String juzgado, String estado) {
+    public Oficialia(String clave, String nombre, String claveJuzgado, String estado) {
         this.clave = clave;
         this.nombre = nombre;
-        this.juzgado = juzgado;
-        this.estado = estado != null ? estado : "Activo";
-    }
-
-    public Oficialia(String clave, String nombre, String juzgado, String distrito, String titular, String horario, String estado) {
-        this.clave = clave;
-        this.nombre = nombre;
-        this.juzgado = juzgado;
-        this.distrito = distrito;
-        this.titular = titular;
-        this.horario = horario;
-        this.estado = estado != null ? estado : "Activo";
+        this.claveJuzgado = claveJuzgado;
+        this.estado = estado != null ? estado : "ACTIVO";
     }
 
     public String getClave() {
@@ -51,6 +42,14 @@ public class Oficialia implements Serializable {
         this.nombre = nombre;
     }
 
+    public String getClaveJuzgado() {
+        return claveJuzgado;
+    }
+
+    public void setClaveJuzgado(String claveJuzgado) {
+        this.claveJuzgado = claveJuzgado;
+    }
+
     public String getJuzgado() {
         return juzgado;
     }
@@ -67,24 +66,36 @@ public class Oficialia implements Serializable {
         this.distrito = distrito;
     }
 
-    public String getTitular() {
-        return titular;
+    public Long getAdminId() {
+        return adminId;
     }
 
-    public void setTitular(String titular) {
-        this.titular = titular;
+    public void setAdminId(Long adminId) {
+        this.adminId = adminId;
     }
 
-    public String getHorario() {
-        return horario;
+    public String getAdminNombre() {
+        return adminNombre;
     }
 
-    public void setHorario(String horario) {
-        this.horario = horario;
+    public void setAdminNombre(String adminNombre) {
+        this.adminNombre = adminNombre;
+    }
+
+    public String getAdminCorreo() {
+        return adminCorreo;
+    }
+
+    public void setAdminCorreo(String adminCorreo) {
+        this.adminCorreo = adminCorreo;
+    }
+
+    public boolean isTieneAdministrador() {
+        return adminNombre != null && !adminNombre.isBlank();
     }
 
     public String getEstado() {
-        return estado != null ? estado : "Activo";
+        return estado != null ? estado : "ACTIVO";
     }
 
     public void setEstado(String estado) {
@@ -92,7 +103,10 @@ public class Oficialia implements Serializable {
     }
 
     public boolean isActivo() {
-        return "Activo".equalsIgnoreCase(this.estado);
+        return "ACTIVO".equalsIgnoreCase(this.estado);
+    }
+
+    public String getEstadoTexto() {
+        return isActivo() ? "Activo" : "Inactivo";
     }
 }
-
