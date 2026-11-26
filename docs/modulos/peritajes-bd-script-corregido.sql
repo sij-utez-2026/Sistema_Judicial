@@ -1,5 +1,5 @@
 -- ==========================================================
--- Base de datos integrada del sistema judicial — VERSIÓN 4
+-- Base de datos integrada del sistema judicial — VERSIÓN 5
 -- Módulos: Oficialía de Partes (Ofc), Audiencias (Aud), Peritajes (Per),
 --          Segunda Instancia (Seg) y Copias Certificadas (Cop)
 -- Motor: MySQL 8.0.16 o superior (requiere soporte de CHECK). Probado en MySQL 8.0.46.
@@ -725,3 +725,109 @@ CREATE TRIGGER trg_user_Seg_login_au AFTER UPDATE ON user_Seg
     UPDATE Login SET correo = NEW.correo, contrasena = NEW.contrasena
     WHERE correo = OLD.correo
       AND (NEW.correo <> OLD.correo OR NEW.contrasena <> OLD.contrasena);
+
+-- ==========================================================
+-- Triggers AFTER DELETE de Login — complemento de triggers_login.sql (base VERSIÓN 4)
+--
+-- Qué hacen: cuando se BORRA un usuario de user_Ofc, user_Aud, user_Per o user_Seg,
+-- también se borra su renglón de Login (se busca por el correo del usuario borrado).
+-- Sin estos triggers el correo se quedaba en Login: no se podía volver a registrar
+-- (error 1062, llave duplicada) y quedaba un acceso huérfano.
+--
+-- La baja lógica (Status = FALSE) NO necesita trigger: el núcleo (AccesoDao) revisa
+-- Status en la tabla user_* al iniciar sesión y en cada petición.
+--
+-- Se puede correr varias veces (DROP TRIGGER IF EXISTS).
+-- No usa DELIMITER: cada trigger es una sola instrucción, sin BEGIN...END,
+-- para que corra en MySQL Workbench, DBeaver o la consola.
+-- Creados y probados en la base de Aiven el 25/11/2026.
+-- ==========================================================
+
+USE sistema_judicial;
+
+DROP TRIGGER IF EXISTS trg_user_Ofc_login_ad;
+DROP TRIGGER IF EXISTS trg_user_Aud_login_ad;
+DROP TRIGGER IF EXISTS trg_user_Per_login_ad;
+DROP TRIGGER IF EXISTS trg_user_Seg_login_ad;
+
+CREATE TRIGGER trg_user_Ofc_login_ad AFTER DELETE ON user_Ofc
+    FOR EACH ROW
+    DELETE FROM Login WHERE correo = OLD.correo;
+
+CREATE TRIGGER trg_user_Aud_login_ad AFTER DELETE ON user_Aud
+    FOR EACH ROW
+    DELETE FROM Login WHERE correo = OLD.correo;
+
+CREATE TRIGGER trg_user_Per_login_ad AFTER DELETE ON user_Per
+    FOR EACH ROW
+    DELETE FROM Login WHERE correo = OLD.correo;
+
+CREATE TRIGGER trg_user_Seg_login_ad AFTER DELETE ON user_Seg
+    FOR EACH ROW
+    DELETE FROM Login WHERE correo = OLD.correo;
+
+-- Para revisar que quedaron (deben salir 12 triggers: INSERT, UPDATE y DELETE de cada tabla user_*):
+-- SELECT event_object_table, action_timing, event_manipulation, trigger_name
+-- FROM information_schema.triggers WHERE trigger_schema = 'sistema_judicial' ORDER BY 1, 3;
+
+-- ==========================================================
+-- Copias Certificadas (Cop): tarifa congelada, datos del solicitante y entrega
+-- Base: sistema_judicial VERSIÓN 4. Aplicado en la base de Aiven el 25/11/2026.
+--
+-- Cambios respecto al script original del equipo:
+--  * tarifa_Cop se crea ANTES del ALTER, porque solicitud_copia_Cop.id_tarifa ahora la referencia.
+--  * Se agregaron 3 llaves foráneas:
+--      tarifa_Cop.id_usuario                  -> user_Ofc (quién registró la tarifa)
+--      solicitud_copia_Cop.id_tarifa          -> tarifa_Cop (tarifa aplicada)
+--      solicitud_copia_Cop.id_usuario_entrega -> user_Ofc (trabajador que entregó)
+--    Los usuarios de Copias viven en user_Ofc.
+--
+-- IMPORTANTE: el ALTER agrega columnas NOT NULL (nombre, RFC, correo, id_tarifa, costo) y CHECK
+-- sobre el RFC y el costo. Solo funciona si solicitud_copia_Cop está VACÍA (lo estaba al aplicarlo).
+-- Con datos, MySQL las llenaría con '' y 0 y los CHECK harían fallar el ALTER (error 3819).
+-- El ALTER es atómico: si falla, no se aplica nada de él.
+-- tarifa_Cop y la tarifa inicial se pueden correr varias veces. El ALTER solo una vez.
+-- ==========================================================
+
+USE sistema_judicial;
+
+-- ---------- Tarifas (precio de la copia certificada) ----------
+CREATE TABLE IF NOT EXISTS tarifa_Cop (
+                                          id_tarifa     INT NOT NULL AUTO_INCREMENT,
+                                          monto         DECIMAL(10,2) NOT NULL,
+    vigente_desde DATE NOT NULL,
+    id_usuario    INT NULL,                          -- quién la registró
+    CONSTRAINT pk_tarifa_Cop PRIMARY KEY (id_tarifa),
+    CONSTRAINT ck_tarifa_Cop_monto CHECK (monto > 0),
+    CONSTRAINT fk_tarifa_Cop_id_usuario FOREIGN KEY (id_usuario) REFERENCES user_Ofc(id_usuario)
+    ) ENGINE=InnoDB;
+
+-- Tarifa inicial (solo si todavía no existe una con esa fecha)
+INSERT INTO tarifa_Cop (monto, vigente_desde)
+SELECT 320.00, '2026-01-01' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM tarifa_Cop WHERE vigente_desde = '2026-01-01');
+
+-- ---------- Solicitud de copia: solicitante, tarifa congelada y entrega ----------
+ALTER TABLE solicitud_copia_Cop
+    ADD solicitante_nombre VARCHAR(150) NOT NULL,
+    ADD solicitante_rfc    VARCHAR(13)  NOT NULL,
+    ADD solicitante_correo VARCHAR(150) NOT NULL,
+    ADD solicitante_ine    MEDIUMBLOB   NULL,        -- solo expedientes privados. PDF/JPG/PNG hasta 5 MB
+    ADD id_tarifa          INT          NOT NULL,    -- tarifa aplicada
+    ADD costo              DECIMAL(10,2) NOT NULL,   -- precio congelado al registrar
+    ADD id_usuario_entrega INT          NULL,        -- trabajador que entregó
+    ADD fecha_entrega      DATETIME     NULL,        -- cuándo se entregó
+    MODIFY estado_solicitud ENUM('REGISTRADA','EN_REVISION','APROBADA','RECHAZADA','PAGADA',
+                                 'LISTA_PARA_RECOGER','ENTREGADA') NOT NULL,
+    ADD CONSTRAINT ck_solicitud_copia_Cop_rfc   CHECK (CHAR_LENGTH(solicitante_rfc) IN (12, 13)),
+    ADD CONSTRAINT ck_solicitud_copia_Cop_costo CHECK (costo > 0),
+    ADD CONSTRAINT ck_solicitud_copia_Cop_entrega
+        CHECK (estado_solicitud <> 'ENTREGADA' OR (id_usuario_entrega IS NOT NULL AND fecha_entrega IS NOT NULL)),
+    ADD CONSTRAINT fk_solicitud_copia_Cop_id_tarifa
+        FOREIGN KEY (id_tarifa) REFERENCES tarifa_Cop(id_tarifa),
+    ADD CONSTRAINT fk_solicitud_copia_Cop_id_usuario_entrega
+        FOREIGN KEY (id_usuario_entrega) REFERENCES user_Ofc(id_usuario);
+
+-- ---------- Revisión ----------
+-- DESCRIBE solicitud_copia_Cop;
+-- SELECT * FROM tarifa_Cop;
