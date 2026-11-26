@@ -1,0 +1,54 @@
+:root {
+    /* Paleta Institucional Poder Judicial del Estado de Morelos */
+    --pj-green-dark: #1b3323;
+    --pj-green-darker: #13261a;
+    --pj-green-surface: #223e2b;
+    --pj-green-hover: #294c35;
+    --pj-green-active: #2f563c;
+    --pj-green-banner: #1d3826;
+
+    /* Acentos */
+    --pj-gold: #c29d59;
+    --pj-gold-light: #e0ca97;
+    --pj-gold-subtle: rgba(194, 157, 89, 0.15);
+
+    --pj-burgundy: #5c163b;
+    --pj-burgundy-hover: #48112e;
+    --pj-burgundy-light: rgba(92, 22, 59, 0.08);
+
+    /* Fondos y Superficies */
+    --pj-bg-body: #f8f7f4;
+    --pj-card-bg: #ffffff;
+    --pj-card-border: #eae6df;
+    --pj-sidebar-border: rgba(255, 255, 255, 0.08);
+
+    /* Tipografía y Textos */
+    --pj-text-primary: #212922;
+    --pj-text-secondary: #657367;
+    --pj-text-muted: #95a398;
+    --pj-text-light: #f2f5f3;
+
+    /* Estados y Alertas */
+    --pj-success: #2d8a55;
+    --pj-danger: #c0392b;
+    --pj-danger-light: #fbeae8;
+    --pj-warning: #d97706;
+
+    /* Inputs y Bordes */
+    --pj-input-border: #ded7cb;
+    --pj-input-focus: #5c163b;
+    --pj-input-bg: #ffffff;
+
+    /* Sombras y Radios */
+    --pj-radius-sm: 6px;
+    --pj-radius-md: 10px;
+    --pj-radius-lg: 16px;
+    --pj-radius-pill: 9999px;
+
+    --pj-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+    --pj-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+    --pj-shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.08);
+
+    --pj-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+

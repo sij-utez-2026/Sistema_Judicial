@@ -1,6 +1,5 @@
 package mx.edu.utez.sij.oficialia.model;
 
-
 import java.io.Serializable;
 
 public class Juzgado implements Serializable {
@@ -8,27 +7,20 @@ public class Juzgado implements Serializable {
 
     private String clave;
     private String nombre;
-    private String distrito;
-    private String materia;
-    private String estado; // "Activo" o "Inactivo"
+    private String claveDistrito;
+    private String distrito; // Nombre del distrito para mostrar en tabla
+    private String estado;   // "ACTIVO" o "INACTIVO"
 
     public Juzgado() {
-        this.estado = "Activo";
+        this.estado = "ACTIVO";
     }
 
-    public Juzgado(String clave, String nombre, String distrito, String estado) {
+    public Juzgado(String clave, String nombre, String claveDistrito, String distrito, String estado) {
         this.clave = clave;
         this.nombre = nombre;
+        this.claveDistrito = claveDistrito;
         this.distrito = distrito;
-        this.estado = estado != null ? estado : "Activo";
-    }
-
-    public Juzgado(String clave, String nombre, String distrito, String materia, String estado) {
-        this.clave = clave;
-        this.nombre = nombre;
-        this.distrito = distrito;
-        this.materia = materia;
-        this.estado = estado != null ? estado : "Activo";
+        this.estado = estado != null ? estado : "ACTIVO";
     }
 
     public String getClave() {
@@ -47,6 +39,14 @@ public class Juzgado implements Serializable {
         this.nombre = nombre;
     }
 
+    public String getClaveDistrito() {
+        return claveDistrito;
+    }
+
+    public void setClaveDistrito(String claveDistrito) {
+        this.claveDistrito = claveDistrito;
+    }
+
     public String getDistrito() {
         return distrito;
     }
@@ -55,16 +55,8 @@ public class Juzgado implements Serializable {
         this.distrito = distrito;
     }
 
-    public String getMateria() {
-        return materia;
-    }
-
-    public void setMateria(String materia) {
-        this.materia = materia;
-    }
-
     public String getEstado() {
-        return estado != null ? estado : "Activo";
+        return estado != null ? estado : "ACTIVO";
     }
 
     public void setEstado(String estado) {
@@ -72,6 +64,10 @@ public class Juzgado implements Serializable {
     }
 
     public boolean isActivo() {
-        return "Activo".equalsIgnoreCase(this.estado);
+        return "ACTIVO".equalsIgnoreCase(this.estado);
+    }
+
+    public String getEstadoTexto() {
+        return isActivo() ? "Activo" : "Inactivo";
     }
 }

@@ -1,0 +1,647 @@
+/**
+ * Estilos propios del módulo de Oficialía de Partes / Superadministrador Judicial.
+ * Paleta institucional alineada con Peritajes y el núcleo (recursos/nucleo/css/estilos.css):
+ *   --sij-primario:       #1f3a2c
+ *   --sij-primario-hover: #2b4d3b
+ *   --sij-primario-claro: #e8efe9
+ *   --sij-acento:         #c9a54a
+ *   --sij-fondo:          #f5f3ec
+ *   --sij-borde:          #e3e0d6
+ * Prefijo: ofi-
+ */
+
+:root {
+    --ofi-color-principal: var(--sij-primario, #1f3a2c);
+    --ofi-color-secundario: var(--sij-primario-hover, #2b4d3b);
+    --ofi-color-accion: var(--sij-primario, #1f3a2c);
+    --ofi-color-accion-hover: var(--sij-primario-hover, #2b4d3b);
+    --ofi-color-acento: var(--sij-acento, #c9a54a);
+    --ofi-fondo-card-foto: #26382c;
+    --ofi-table-th-bg: #faf9f5;
+}
+
+/* =========================================================
+   BOTONES DE ACCIÓN (PALETA INSTITUCIONAL VERDE SIJ)
+   ========================================================= */
+.btn-primary, .btn-ofi-accion {
+    background-color: var(--ofi-color-accion) !important;
+    border-color: var(--ofi-color-accion) !important;
+    color: #ffffff !important;
+    font-weight: 500;
+    border-radius: 6px;
+    padding: 0.55rem 1.25rem;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.btn-primary:hover, .btn-ofi-accion:hover {
+    background-color: var(--ofi-color-accion-hover) !important;
+    border-color: var(--ofi-color-accion-hover) !important;
+    color: #ffffff !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(31, 58, 44, 0.22);
+}
+
+.btn-sij-secundario {
+    background-color: #ffffff;
+    border: 1px solid var(--sij-borde);
+    color: var(--sij-texto);
+    font-weight: 500;
+    border-radius: 6px;
+    padding: 0.55rem 1.15rem;
+    transition: all 0.15s ease;
+}
+
+.btn-sij-secundario:hover {
+    background-color: var(--sij-primario-claro);
+    color: var(--sij-texto);
+    border-color: #c9d6cc;
+}
+
+/* =========================================================
+   SIDEBAR EMBLEMA CIRCULAR Y ESTILOS
+   ========================================================= */
+.ofi-circle-logo {
+    width: 44px;
+    height: 44px;
+    border: 1.5px solid rgba(255, 255, 255, 0.85);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: 0.05em;
+    color: #ffffff;
+    flex-shrink: 0;
+}
+
+.ofi-circle-logo.dark {
+    border-color: var(--sij-primario);
+    color: var(--sij-primario);
+}
+
+.ofi-pj-text {
+    line-height: 1.15;
+}
+
+.ofi-pj-text .ofi-pj-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.ofi-pj-text .ofi-pj-sub {
+    font-size: 0.65rem;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+}
+
+.ofi-sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    text-decoration: none;
+    color: #ffffff;
+    margin-bottom: 1.25rem;
+}
+
+.ofi-sidebar-logo:hover {
+    color: #ffffff;
+}
+
+.ofi-sidebar-logo .ofi-circle-logo {
+    width: 38px;
+    height: 38px;
+    font-size: 0.85rem;
+}
+
+.sij-menu .nav-link {
+    color: rgba(255, 255, 255, 0.85);
+    border-radius: 6px;
+    padding: 0.6rem 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.15s ease;
+    border-left: 3px solid transparent;
+}
+
+.sij-menu .nav-link:hover {
+    background-color: var(--sij-primario-hover);
+    color: #ffffff;
+}
+
+.sij-menu .nav-link.active {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    border-left: 3px solid var(--sij-acento);
+}
+
+.ofi-user-badge {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    margin-bottom: 0.75rem;
+}
+
+/* =========================================================
+   TOPBAR HEADER INSTITUCIONAL
+   ========================================================= */
+.ofi-topbar {
+    background: #ffffff;
+    border-bottom: 1px solid var(--sij-borde);
+    padding: 0.85rem 1.5rem;
+}
+
+.ofi-topbar-tag {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--sij-texto-suave);
+    line-height: 1;
+    margin-bottom: 0.25rem;
+}
+
+.ofi-topbar-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--sij-texto);
+    line-height: 1.2;
+    margin: 0;
+}
+
+.ofi-eyebrow {
+    color: var(--sij-acento);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+/* =========================================================
+   TARJETAS FOTOGRÁFICAS DEL DASHBOARD
+   ========================================================= */
+.ofi-grid-dashboard {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+@media (max-width: 768px) {
+    .ofi-grid-dashboard {
+        grid-template-columns: 1fr;
+    }
+}
+
+.ofi-card-photo {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    min-height: 200px;
+    padding: 2rem 2.25rem 1.5rem 2.25rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    text-decoration: none;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(31, 58, 44, 0.12);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    background-size: cover;
+    background-position: center;
+}
+
+.ofi-card-photo:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(31, 58, 44, 0.2);
+}
+
+.ofi-card-photo::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(31, 58, 44, 0.84) 0%, rgba(20, 38, 28, 0.92) 100%);
+    z-index: 1;
+}
+
+.ofi-card-photo > * {
+    position: relative;
+    z-index: 2;
+}
+
+.ofi-bg-distritos {
+    background-color: #1f3a2c;
+    background-image:
+            radial-gradient(circle at 80% 20%, rgba(201, 165, 74, 0.22) 0%, transparent 60%),
+            linear-gradient(rgba(31, 58, 44, 0.8), rgba(22, 41, 31, 0.9)),
+            url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300" opacity="0.18"><path fill="%23ffffff" d="M0 250 L120 180 L250 220 L380 150 L500 210 L600 170 L600 300 L0 300 Z"/></svg>');
+}
+
+.ofi-bg-juzgados {
+    background-color: #244031;
+    background-image:
+            radial-gradient(circle at 75% 30%, rgba(201, 165, 74, 0.25) 0%, transparent 60%),
+            linear-gradient(rgba(31, 58, 44, 0.8), rgba(22, 41, 31, 0.9)),
+            url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" opacity="0.2"><circle cx="200" cy="110" r="70" fill="none" stroke="%23ffffff" stroke-width="4"/><path fill="none" stroke="%23ffffff" stroke-width="4" d="M100 240 L100 160 L300 160 L300 240 M70 240 L330 240"/></svg>');
+}
+
+.ofi-bg-oficialias {
+    background-color: #1f3a2c;
+    background-image:
+            radial-gradient(circle at 70% 30%, rgba(232, 239, 233, 0.2) 0%, transparent 60%),
+            linear-gradient(rgba(31, 58, 44, 0.8), rgba(22, 41, 31, 0.9)),
+            url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" opacity="0.2"><rect x="120" y="80" width="160" height="110" rx="6" fill="none" stroke="%23ffffff" stroke-width="4"/><line x1="80" y1="210" x2="320" y2="210" stroke="%23ffffff" stroke-width="5"/></svg>');
+}
+
+.ofi-bg-materias {
+    background-color: #2b4d3b;
+    background-image:
+            radial-gradient(circle at 80% 40%, rgba(201, 165, 74, 0.25) 0%, transparent 60%),
+            linear-gradient(rgba(31, 58, 44, 0.8), rgba(22, 41, 31, 0.9)),
+            url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" opacity="0.2"><path fill="none" stroke="%23ffffff" stroke-width="4" d="M100 80 L100 220 M140 70 L140 220 M180 85 L180 220 M220 75 L220 220 M260 80 L260 220"/></svg>');
+}
+
+.ofi-photo-number {
+    font-size: 2.75rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 0.35rem;
+    letter-spacing: -0.02em;
+}
+
+.ofi-photo-label {
+    font-size: 1rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.ofi-photo-divider {
+    height: 1px;
+    background-color: rgba(201, 165, 74, 0.38);
+    margin: 2rem 0 1rem 0;
+}
+
+.ofi-photo-link {
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+/* =========================================================
+   TABLAS Y ENCABEZADOS (IGUAL QUE PERITAJES / SIJ)
+   ========================================================= */
+.sij-tabla thead th {
+    background-color: var(--ofi-table-th-bg) !important;
+    color: var(--sij-texto-suave) !important;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.85rem 1.25rem;
+    border-bottom: 1px solid var(--sij-borde);
+}
+
+.sij-tabla tbody td {
+    padding: 0.95rem 1.25rem;
+    color: var(--sij-texto);
+    border-bottom: 1px solid #f0ede4;
+}
+
+.ofi-badge-code {
+    font-family: monospace;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 0.2rem 0.55rem;
+    background: #f4efdf;
+    color: var(--sij-primario);
+    border: 1px solid var(--sij-borde);
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.ofi-sin-asignar {
+    color: var(--sij-texto-suave);
+    font-style: italic;
+}
+
+/* =========================================================
+   TOGGLE SWITCH DE ESTADO (ACTIVO / INACTIVO)
+   ========================================================= */
+.ofi-switch-form {
+    display: inline-block;
+    margin: 0;
+}
+
+.ofi-switch {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    user-select: none;
+    margin: 0;
+}
+
+.ofi-switch input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.ofi-slider {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+    background-color: #d6d2c7;
+    border-radius: 34px;
+    transition: background-color 0.2s ease;
+}
+
+.ofi-slider::before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: transform 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.ofi-switch input:checked + .ofi-slider {
+    background-color: var(--sij-primario);
+}
+
+.ofi-switch input:checked + .ofi-slider::before {
+    transform: translateX(18px);
+}
+
+.ofi-switch-text {
+    font-size: 0.82rem;
+    color: var(--sij-texto);
+}
+
+/* =========================================================
+   BOTONES DE ACCIÓN (EDITAR, ASIGNAR ADMIN, ELIMINAR)
+   ========================================================= */
+.ofi-btn-action {
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    border: 1px solid var(--sij-borde);
+    background: #ffffff;
+    color: var(--sij-texto-suave);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.ofi-btn-action:hover {
+    background: var(--sij-primario-claro);
+    color: var(--sij-primario);
+    border-color: #b7cbbd;
+}
+
+.ofi-btn-action-danger:hover {
+    background: #fbeae8;
+    color: #b3412f;
+    border-color: #f5c2c7;
+}
+
+/* =========================================================
+   PANTALLA DE PERSONALIZACIÓN
+   ========================================================= */
+.ofi-step-pill {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background-color: var(--sij-primario);
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ofi-logo-box {
+    background: var(--sij-fondo);
+    border: 1px solid var(--sij-borde);
+    border-radius: 8px;
+    padding: 1.5rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.ofi-color-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+@media (max-width: 576px) {
+    .ofi-color-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.ofi-color-card {
+    background: #ffffff;
+    border: 1px solid var(--sij-borde);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ofi-color-card:hover {
+    border-color: var(--sij-acento);
+    box-shadow: 0 2px 8px rgba(31, 58, 44, 0.08);
+}
+
+.ofi-color-swatch {
+    width: 34px;
+    height: 34px;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    flex-shrink: 0;
+}
+
+.ofi-badge-live {
+    background: var(--sij-primario-claro);
+    color: #2e7d4f;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.2rem 0.65rem;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.ofi-preview-container {
+    background: #ffffff;
+    border: 1px solid var(--sij-borde);
+    border-radius: 10px;
+    padding: 1.75rem;
+    box-shadow: 0 4px 16px rgba(31, 58, 44, 0.05);
+}
+
+.ofi-mock-app {
+    display: flex;
+    border: 1px solid var(--sij-borde);
+    border-radius: 8px;
+    overflow: hidden;
+    height: 320px;
+    margin-bottom: 1.25rem;
+}
+
+.ofi-mock-sidebar {
+    width: 90px;
+    background: var(--sij-primario);
+    padding: 1rem 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.ofi-mock-main {
+    flex: 1;
+    background: var(--sij-fondo);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.ofi-alert-info-box {
+    background: var(--sij-primario-claro);
+    border: 1px solid #c9ded0;
+    color: #1f3a2c;
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+    font-size: 0.84rem;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.ofi-sticky-footer-bar {
+    background: #ffffff;
+    border: 1px solid var(--sij-borde);
+    border-radius: 10px;
+    padding: 1.25rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+/* =========================================================
+   MODALES PROPIOS (CON PALETA SIJ)
+   ========================================================= */
+.ofi-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(19, 38, 26, 0.55);
+    backdrop-filter: blur(3px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1050;
+    padding: 1.5rem;
+}
+
+.ofi-modal-backdrop.active {
+    display: flex;
+}
+
+.ofi-modal-dialog {
+    background: #ffffff;
+    width: 100%;
+    max-width: 640px;
+    max-height: 92vh;
+    overflow-y: auto;
+    border-radius: 10px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.22);
+    animation: ofiModalIn 0.2s ease-out;
+}
+
+@keyframes ofiModalIn {
+    from {
+        opacity: 0;
+        transform: scale(0.96) translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.ofi-modal-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--sij-fondo);
+    border: 1px solid var(--sij-borde);
+    color: var(--sij-texto-suave);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.1rem;
+    line-height: 1;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.ofi-modal-close:hover {
+    background: var(--sij-primario-claro);
+    color: var(--sij-primario);
+}
+
+.ofi-modal-section-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--sij-primario);
+    border-bottom: 1px solid var(--sij-borde);
+    padding-bottom: 0.4rem;
+    margin-top: 0.5rem;
+}

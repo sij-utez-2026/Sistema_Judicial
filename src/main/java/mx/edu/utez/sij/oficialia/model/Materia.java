@@ -8,24 +8,17 @@ public class Materia implements Serializable {
     private String clave;
     private String nombre;
     private String descripcion;
-    private String estado; // "Activo" o "Inactivo"
+    private String estado; // "ACTIVO" o "INACTIVO"
 
     public Materia() {
-        this.estado = "Activo";
-    }
-
-    public Materia(String clave, String nombre, String descripcion) {
-        this.clave = clave;
-        this.nombre = nombre;
-        this.descripcion = descripcion;
-        this.estado = "Activo";
+        this.estado = "ACTIVO";
     }
 
     public Materia(String clave, String nombre, String descripcion, String estado) {
         this.clave = clave;
         this.nombre = nombre;
         this.descripcion = descripcion;
-        this.estado = estado != null ? estado : "Activo";
+        this.estado = estado != null ? estado : "ACTIVO";
     }
 
     public String getClave() {
@@ -53,7 +46,7 @@ public class Materia implements Serializable {
     }
 
     public String getEstado() {
-        return estado != null ? estado : "Activo";
+        return estado != null ? estado : "ACTIVO";
     }
 
     public void setEstado(String estado) {
@@ -61,7 +54,10 @@ public class Materia implements Serializable {
     }
 
     public boolean isActivo() {
-        return "Activo".equalsIgnoreCase(this.estado);
+        return "ACTIVO".equalsIgnoreCase(this.estado);
+    }
+
+    public String getEstadoTexto() {
+        return isActivo() ? "Activo" : "Inactivo";
     }
 }
-

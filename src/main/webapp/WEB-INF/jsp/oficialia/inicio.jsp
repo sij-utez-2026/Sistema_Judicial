@@ -2,21 +2,16 @@
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <%@ taglib prefix="t" tagdir="/WEB-INF/tags" %>
 <%@ taglib prefix="n" tagdir="/WEB-INF/tags/nucleo" %>
-<%--
-  Inicio del módulo (/oficialia). EQUIPO 1: es la página de ejemplo para copiar.
-  Toda pantalla del módulo empieza igual: <t:layout modulo="oficialia" seccion="...">, <n:migas> y <n:encabezado>.
-  Guía completa: docs/FRONT_END.md
---%>
 <t:layout titulo="Inicio" modulo="oficialia" seccion="inicio">
     <n:migas>Inicio</n:migas>
-    <n:encabezado titulo="${moduloActual.nombre}" descripcion="${moduloActual.descripcion}"/>
+    <n:encabezado titulo="Hola, ${usuarioActual.nombre}"
+                  descripcion="${usuarioActual.rol} · ${moduloActual.nombreLargo}"/>
 
-    <n:tarjeta titulo="Pantalla de inicio de ejemplo" clase="mt-3">
-        <p class="sij-descripcion">
-            Equipo 1: reemplacen este contenido por el inicio según el rol que pide su DFR
-            (<code>docs/modulos/oficialia.md</code>, sección 8). Las opciones del menú lateral están en
-            <code>src/main/webapp/WEB-INF/jsp/oficialia/menu.jsp</code>.
+    <n:tarjeta titulo="Bienvenido a Oficialía de Partes" clase="mt-3">
+        <p class="sij-descripcion mb-2">
+            Has iniciado sesión con el rol <c:out value="${usuarioSesion.rol}"/>.
+            Las pantallas operativas de demandas y personal estarán disponibles en las opciones del menú lateral.
         </p>
-        <n:estado valor="Pendiente"/>
+        <n:estado valor="Sesión activa"/>
     </n:tarjeta>
 </t:layout>

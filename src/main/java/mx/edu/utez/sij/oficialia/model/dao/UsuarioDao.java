@@ -1,80 +1,55 @@
 package mx.edu.utez.sij.oficialia.model.dao;
 
-
+import mx.edu.utez.sij.nucleo.bd.ConexionBD;
 import mx.edu.utez.sij.oficialia.model.Usuario;
-import mx.edu.utez.sij.oficialia.utils.InMemoryDataStore;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
-public class UsuarioDao implements Dao<Usuario> {
+public class UsuarioDao {
 
-    private final InMemoryDataStore dataStore = InMemoryDataStore.getInstance();
-
-    @Override
-    public List<Usuario> getAll() {
-        // ==========================================================
-        // FUTURO SQL CON BASE DE DATOS:
-        // List<Usuario> list = new ArrayList<>();
-        // String sql = "SELECT * FROM usuarios";
-        // try (Connection con = SQLConnector.getConnection();
-        //      PreparedStatement ps = con.prepareStatement(sql);
-        //      ResultSet rs = ps.executeQuery()) { ... }
-        // ==========================================================
-        return new ArrayList<>(dataStore.getUsuarios());
-    }
-
-    @Override
-    public Usuario getById(String id) {
-        try {
-            int intId = Integer.parseInt(id);
-            for (Usuario u : dataStore.getUsuarios()) {
-                if (u.getId() == intId) {
-                    return u;
+    public Usuario buscarPorId(long idUsuario) {
+        String sql = "SELECT u.id_usuario, u.nombre, u.apellido_paterno, u.apellido_materno, u.correo, u.Status, r.rol"
+                + " FROM user_Ofc u JOIN Rol r ON r.id_rol = u.id_rol WHERE u.id_usuario = ?";
+        try (Connection con = ConexionBD.obtener();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setLong(1, idUsuario);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return null;
                 }
-            }
-        } catch (NumberFormatException ignored) {}
-        return null;
-    }
-
-    public Usuario autenticar(String correo, String contrasena) {
-        if (correo == null || contrasena == null) return null;
-        for (Usuario u : dataStore.getUsuarios()) {
-            if (u.getCorreo().equalsIgnoreCase(correo.trim()) && u.getContrasena().equals(contrasena)) {
+                Usuario u = new Usuario();
+                u.setId(rs.getLong("id_usuario"));
+                u.setNombre(rs.getString("nombre"));
+                u.setApellidoPaterno(rs.getString("apellido_paterno"));
+                u.setApellidoMaterno(rs.getString("apellido_materno"));
+                u.setCorreo(rs.getString("correo"));
+                u.setActivo(rs.getBoolean("Status"));
+                u.setRol(rs.getString("rol"));
                 return u;
             }
+        } catch (SQLException e) {
+            throw new IllegalStateException("No se pudo consultar el usuario", e);
         }
-        return null;
     }
 
-    @Override
-    public boolean save(Usuario item) {
-        if (item == null) return false;
-        item.setId(dataStore.getUsuarios().size() + 1);
-        return dataStore.getUsuarios().add(item);
-    }
-
-    @Override
-    public boolean update(Usuario item) {
-        if (item == null) return false;
-        List<Usuario> list = dataStore.getUsuarios();
-        for (int i = 0; i < list.size(); i++) {
-            if (list.get(i).getId() == item.getId()) {
-                list.set(i, item);
-                return true;
-            }
+    public String actualizarNombre(long idUsuario, String nombre, String apellidoPaterno, String apellidoMaterno) {
+        if (nombre == null || nombre.isBlank() || apellidoPaterno == null || apellidoPaterno.isBlank()) {
+            return "El nombre y apellido paterno son obligatorios.";
         }
-        return false;
-    }
-
-    @Override
-    public boolean delete(String id) {
-        try {
-            int intId = Integer.parseInt(id);
-            return dataStore.getUsuarios().removeIf(u -> u.getId() == intId);
-        } catch (NumberFormatException e) {
-            return false;
+        String sql = "UPDATE user_Ofc SET nombre = ?, apellido_paterno = ?, apellido_materno = ? WHERE id_usuario = ?";
+        try (Connection con = ConexionBD.obtener();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, nombre.trim());
+            ps.setString(2, apellidoPaterno.trim());
+            ps.setString(3, (apellidoMaterno == null || apellidoMaterno.isBlank()) ? null : apellidoMaterno.trim());
+            ps.setLong(4, idUsuario);
+            ps.executeUpdate();
+            return null;
+        } catch (SQLException e) {
+            throw new IllegalStateException("No se pudo actualizar el usuario", e);
         }
     }
 }
-
