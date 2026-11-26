@@ -1,33 +1,72 @@
 package mx.edu.utez.sij.peritajes.model;
 
-import java.time.LocalDateTime;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
+
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
-/**
- * Perito del padrón (RF 3.1 – 3.4).
- *
- * TEMPORAL: por ahora se guarda en memoria (PeritoDaoMemoria). Con MySQL (PeritoDaoMySql):
- * - tabla per_perito; especialidades en per_perito_especialidad y materias en per_perito_materia
- *   (de materias solo el id, sin llave foránea a Oficialía),
- * - correo y numero_registro con UNIQUE.
- */
+// Perito del padrón (RF 3.1 – 3.4): un usuario de user_Per con rol PERITAJES_PERITO o PERITAJES_PERITO_ADMIN,
+// sus especialidades (educacion_especialidad_Per) y sus materias (perito_materia_Per).
+// Las anotaciones las revisa Validador (núcleo) en el registro y la edición.
+// Los tamaños máximos son los de las columnas de user_Per.
 public class Perito {
 
-    private Long id;
-    private String numeroRegistro;      // PER-0000, único y fijo
+    private Long id;                    // id_usuario; el número de registro sale de aquí (PER-0005)
+
+    @NotBlank(message = "El nombre es obligatorio")
+    @Size(max = 50, message = "El nombre no debe pasar de 50 caracteres")
     private String nombre;
+
+    @NotBlank(message = "El apellido paterno es obligatorio")
+    @Size(max = 50, message = "El apellido paterno no debe pasar de 50 caracteres")
     private String apellidoPaterno;
+
+    @Size(max = 50, message = "El apellido materno no debe pasar de 50 caracteres")
     private String apellidoMaterno;     // opcional
-    private String correo;              // único y fijo
-    private String telefono;            // solo los 10 dígitos
-    // Especialidades en texto libre: área o estudios del perito (al menos una)
-    private Set<String> especialidades = new LinkedHashSet<>();
-    // Materias de intervención: solo los id (el catálogo es de Oficialía)
-    private Set<Long> materiasIds = new LinkedHashSet<>();
-    private boolean activo = true;
-    private LocalDateTime creadoEn;
-    private LocalDateTime actualizadoEn;
+
+    @NotBlank(message = "El correo institucional es obligatorio")
+    @Email(message = "El correo no tiene un formato válido")
+    @Size(max = 150, message = "El correo no debe pasar de 150 caracteres")
+    private String correo;              // único en todo el sistema (tabla Login) y no se cambia
+
+    // PERITAJES_PERITO o PERITAJES_PERITO_ADMIN; se elige en el registro
+    private String rolSistema = UsuarioPeritajes.PERITO;
+
+    // Texto libre: área o estudios del perito (al menos una). Llegan como especialidades[0], especialidades[1]...
+    private List<String> especialidades = new ArrayList<>();
+
+    // Ids de materia_Ofc (id_materia)
+    @NotEmpty(message = "Seleccione al menos una materia para la asignación")
+    private Set<Long> materias = new LinkedHashSet<>();
+
+    private boolean activo = true;      // columna Status
+
+    // Campos de solo lectura que llena PeritoDao para las pantallas
+    private String materiasTexto;       // "Civil · Familiar"
+    private long cargaAsignados;
+    private long cargaEnProceso;
+
+    // RF 3.1: "la especialidad es un campo obligatorio"
+    @AssertTrue(message = "La especialidad es un campo obligatorio: capture al menos una")
+    public boolean isEspecialidadCapturada() {
+        return especialidades != null
+                && especialidades.stream().anyMatch(e -> e != null && !e.isBlank());
+    }
+
+    // Q1: el número de registro es el id con formato PER-0005
+    public static String numeroRegistro(Long id) {
+        return id == null ? "" : String.format("PER-%04d", id);
+    }
+
+    public String getNumeroRegistro() {
+        return numeroRegistro(id);
+    }
 
     public String getNombreCompleto() {
         String completo = nombre + " " + apellidoPaterno;
@@ -37,12 +76,13 @@ public class Perito {
         return completo;
     }
 
-    /** Teléfono como se muestra en pantalla: 777 000 0186. */
-    public String getTelefonoFormateado() {
-        if (telefono == null || telefono.length() != 10) {
-            return telefono;
-        }
-        return telefono.substring(0, 3) + " " + telefono.substring(3, 6) + " " + telefono.substring(6);
+    public String getRol() {
+        return UsuarioPeritajes.textoRol(rolSistema);
+    }
+
+    // Carga activa: Asignados + En Proceso (regla de negocio 3 del DFR)
+    public long getCargaTotal() {
+        return cargaAsignados + cargaEnProceso;
     }
 
     public Long getId() {
@@ -51,14 +91,6 @@ public class Perito {
 
     public void setId(Long id) {
         this.id = id;
-    }
-
-    public String getNumeroRegistro() {
-        return numeroRegistro;
-    }
-
-    public void setNumeroRegistro(String numeroRegistro) {
-        this.numeroRegistro = numeroRegistro;
     }
 
     public String getNombre() {
@@ -93,28 +125,28 @@ public class Perito {
         this.correo = correo;
     }
 
-    public String getTelefono() {
-        return telefono;
+    public String getRolSistema() {
+        return rolSistema;
     }
 
-    public void setTelefono(String telefono) {
-        this.telefono = telefono;
+    public void setRolSistema(String rolSistema) {
+        this.rolSistema = rolSistema;
     }
 
-    public Set<String> getEspecialidades() {
+    public List<String> getEspecialidades() {
         return especialidades;
     }
 
-    public void setEspecialidades(Set<String> especialidades) {
+    public void setEspecialidades(List<String> especialidades) {
         this.especialidades = especialidades;
     }
 
-    public Set<Long> getMateriasIds() {
-        return materiasIds;
+    public Set<Long> getMaterias() {
+        return materias;
     }
 
-    public void setMateriasIds(Set<Long> materiasIds) {
-        this.materiasIds = materiasIds;
+    public void setMaterias(Set<Long> materias) {
+        this.materias = materias;
     }
 
     public boolean isActivo() {
@@ -125,19 +157,27 @@ public class Perito {
         this.activo = activo;
     }
 
-    public LocalDateTime getCreadoEn() {
-        return creadoEn;
+    public String getMateriasTexto() {
+        return materiasTexto;
     }
 
-    public void setCreadoEn(LocalDateTime creadoEn) {
-        this.creadoEn = creadoEn;
+    public void setMateriasTexto(String materiasTexto) {
+        this.materiasTexto = materiasTexto;
     }
 
-    public LocalDateTime getActualizadoEn() {
-        return actualizadoEn;
+    public long getCargaAsignados() {
+        return cargaAsignados;
     }
 
-    public void setActualizadoEn(LocalDateTime actualizadoEn) {
-        this.actualizadoEn = actualizadoEn;
+    public void setCargaAsignados(long cargaAsignados) {
+        this.cargaAsignados = cargaAsignados;
+    }
+
+    public long getCargaEnProceso() {
+        return cargaEnProceso;
+    }
+
+    public void setCargaEnProceso(long cargaEnProceso) {
+        this.cargaEnProceso = cargaEnProceso;
     }
 }

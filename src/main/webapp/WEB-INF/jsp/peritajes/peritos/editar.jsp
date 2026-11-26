@@ -44,23 +44,22 @@
                                 <n:error campo="apellidoMaterno"/>
                             </div>
 
-                            <%-- Correo y número de registro: fijos (el service no los cambia) --%>
-                            <div class="col-md-7">
+                            <%-- Correo, número de registro y tipo de usuario: fijos (PeritoDao no los cambia).
+                                 No llevan name: el servidor usa los guardados. --%>
+                            <div class="col-md-6">
                                 <label for="correo" class="form-label">Correo institucional</label>
-                                <input id="correo" name="correo" type="email" readonly class="form-control"
-                                       value="<c:out value='${peritoForm.correo}'/>">
+                                <input id="correo" type="email" readonly class="form-control"
+                                       value="<c:out value='${perito.correo}'/>">
                             </div>
-                            <div class="col-md-5">
+                            <div class="col-md-3">
                                 <label for="numeroRegistro" class="form-label">Número de registro</label>
-                                <input id="numeroRegistro" name="numeroRegistro" type="text" readonly class="form-control"
-                                       value="<c:out value='${peritoForm.numeroRegistro}'/>">
+                                <input id="numeroRegistro" type="text" readonly class="form-control"
+                                       value="<c:out value='${perito.numeroRegistro}'/>">
                             </div>
-
-                            <div class="col-md-7">
-                                <label for="telefono" class="form-label">Teléfono de contacto *</label>
-                                <input id="telefono" name="telefono" type="tel" maxlength="14" data-telefono="data-telefono" class="form-control${not empty errores.telefono ? ' is-invalid' : ''}"
-                                       value="<c:out value='${peritoForm.telefono}'/>">
-                                <n:error campo="telefono"/>
+                            <div class="col-md-3">
+                                <label for="tipoUsuario" class="form-label">Tipo de usuario</label>
+                                <input id="tipoUsuario" type="text" readonly class="form-control"
+                                       value="<c:out value='${perito.rol}'/>">
                             </div>
 
                             <%-- Especialidades en texto libre: una o varias (RF 3.1 y 3.3) --%>
@@ -87,13 +86,13 @@
                                 <div class="d-flex flex-wrap gap-2">
                                     <c:forEach var="m" items="${materias}">
                                         <span class="per-opcion">
-                                            <input type="checkbox" name="materiasIds" value="${m.id}" id="materia${m.id}" autocomplete="off"
-                                                   class="btn-check per-materia"${peritoForm.materiasIds.contains(m.id) ? ' checked' : ''}>
+                                            <input type="checkbox" name="materias" value="<c:out value='${m.id}'/>" id="materia${m.id}" autocomplete="off"
+                                                   class="btn-check per-materia"${peritoForm.materias.contains(m.id) ? ' checked' : ''}>
                                             <label class="btn btn-sm" for="materia${m.id}"><c:out value="${m.nombre}"/></label>
                                         </span>
                                     </c:forEach>
                                 </div>
-                                <n:error campo="materiasIds" clase="text-danger small mt-1"/>
+                                <n:error campo="materias" clase="text-danger small mt-1"/>
                                 <div class="form-text"><span data-contador-materias></span>
                                     Cambiar las materias no afecta los peritajes ya asignados.</div>
                             </fieldset>
@@ -117,12 +116,12 @@
                         </div>
 
                         <%-- Aviso si tiene carga activa: no se puede desactivar --%>
-                        <c:if test="${perito.activo and carga.total() gt 0}">
+                        <c:if test="${perito.activo and perito.cargaTotal gt 0}">
                             <div class="sij-aviso sij-aviso-advertencia p-3 mb-2">
                                 <div class="fw-semibold">&#9432; No es posible desactivar al perito</div>
-                                Tiene <c:out value="${carga.total()}"/> peritajes con carga activa:
-                                <c:out value="${carga.asignados()}"/> Asignado y
-                                <c:out value="${carga.enProceso()}"/> En Proceso.
+                                Tiene <c:out value="${perito.cargaTotal}"/> peritajes con carga activa:
+                                <c:out value="${perito.cargaAsignados}"/> Asignado y
+                                <c:out value="${perito.cargaEnProceso}"/> En Proceso.
                                 Deben concluirse o ser reasignados por un usuario autorizado antes de cambiar a Inactivo.
                             </div>
                         </c:if>
@@ -149,7 +148,7 @@
 
             <%-- Carga activa: peritajes Asignados y En Proceso --%>
             <div class="col-lg-4">
-                <n:tarjeta titulo="Carga activa: ${carga.total()}">
+                <n:tarjeta titulo="Carga activa: ${perito.cargaTotal}">
                     <c:choose>
                         <c:when test="${empty peritajesActivos}">
                             <p class="sij-descripcion">Sin peritajes Asignados ni En Proceso.</p>
@@ -160,8 +159,8 @@
                                 <tbody>
                                 <c:forEach var="pa" items="${peritajesActivos}">
                                     <tr>
-                                        <td class="fw-semibold"><c:out value="${pa.folio()}"/></td>
-                                        <td><n:estado valor="${pa.estado()}"/></td>
+                                        <td class="fw-semibold"><c:out value="${pa.folio}"/></td>
+                                        <td><n:estado valor="${pa.estado.texto}"/></td>
                                     </tr>
                                 </c:forEach>
                                 </tbody>

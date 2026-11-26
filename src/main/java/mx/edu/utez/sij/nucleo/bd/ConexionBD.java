@@ -72,7 +72,8 @@ public final class ConexionBD {
             throw new IllegalStateException("Falta configurar la base de datos: " + clave
                     + " (copia src/main/resources/bd.example.properties como bd.properties)");
         }
-        return valor;
+        // Properties no quita los espacios al final de la línea: con "America/Mexico_City   " la conexión falla
+        return valor.trim();
     }
 
     private static Properties leerArchivo() {
