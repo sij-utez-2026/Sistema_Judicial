@@ -39,3 +39,11 @@ target/
 .DS_Store
 application-local.properties
 bd.properties
+
+.claude/
+
+# Descripción del PR (borrador local)
+docs/PR.md
+
+# Configuración del correo (cada quien la suya). Copiar correo.example.properties
+correo.properties

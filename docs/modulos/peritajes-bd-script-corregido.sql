@@ -1,37 +1,56 @@
 -- ==========================================================
--- Base de datos integrada del sistema judicial — VERSIÓN 3 (incluye cambios de Peritajes, Equipo 3)
+-- Base de datos integrada del sistema judicial — VERSIÓN 6
 -- Módulos: Oficialía de Partes (Ofc), Audiencias (Aud), Peritajes (Per),
 --          Segunda Instancia (Seg) y Copias Certificadas (Cop)
--- Motor: MySQL 8.0.16 o superior (requiere soporte de CHECK)
--- Script DDL: las tablas se crean en orden de dependencia de llaves foráneas
+-- Motor: MySQL 8.0.16 o superior (requiere soporte de CHECK). Probado en MySQL 8.0.46.
+-- Script DDL: las tablas se crean en orden de dependencia de llaves foráneas.
 --
--- CAMBIOS DE PERITAJES respecto al script original (buscar "CAMBIO PERITAJES"):
---   1. user_Per: intentos_fallidos y bloqueado_hasta (RF 1.1: bloqueo de 15 min después de 3 intentos).
---   2. peritaje_Per: fecha_apertura, fecha_entrega y fecha_cancelacion (RF 4.2, 4.4 y 2.4).
---   3. dictamen_Per: version (RF 4.3: aviso "Hay cambios más recientes en otra ventana" en el autoguardado).
---   4. bitacora_Per: referencia (folio del peritaje o número de registro del perito, para filtrar la bitácora).
---   5. Trigger trg_user_Per_login_au: al cambiar la contraseña en user_Per también se cambia en Login
---      (RF 1.2; el trigger original solo copiaba la contraseña al crear el usuario).
+-- Este archivo es para crear la base DESDE CERO: junta en un solo script las tablas,
+-- los triggers y todas las correcciones. No tiene ALTER TABLE.
+-- Si la base ya existe con una versión anterior, primero respaldarla y luego:
+--     DROP DATABASE IF EXISTS sistema_judicial;
+-- (o, para conservar datos de una base 3.1, usar migracion_ofc_ids.sql en vez de este archivo).
 --
--- CORRECCIONES DE LA REVISIÓN (buscar "CORRECCIÓN"):
---   6. Los triggers AFTER UPDATE buscan en Login por el correo ANTERIOR (OLD.correo) y actualizan
---      correo y contraseña; antes, si cambiaba el correo, Login se quedaba con los datos viejos.
---   7. El trigger AFTER UPDATE se agrega también a user_Ofc, user_Aud y user_Seg para que
---      Login quede sincronizado en todos los módulos.
---   8. CHECK en peritaje_Per (fecha_cancelacion solo si está 'Cancelado'; fecha_entrega solo si está
+-- No usa DELIMITER: los triggers están escritos como una sola instrucción, sin BEGIN...END,
+-- para que corran en cualquier editor (MySQL Workbench, DBeaver, consola).
+--
+-- HISTORIAL
+-- Versión 2 (cambios de Peritajes, Equipo 3; buscar "CAMBIO PERITAJES"):
+--   1. peritaje_Per: fecha_apertura, fecha_entrega y fecha_cancelacion (RF 4.2, 4.4 y 2.4).
+--   2. dictamen_Per: version (RF 4.3: aviso "Hay cambios más recientes en otra ventana" en el autoguardado).
+--   3. bitacora_Per: referencia (folio del peritaje o número de registro del perito, para filtrar la bitácora).
+--   4. Trigger trg_user_Per_login_au: al cambiar la contraseña en user_Per también se cambia en Login (RF 1.2).
+--   Correcciones de la revisión (buscar "CORRECCIÓN"):
+--   5. Los triggers AFTER UPDATE buscan en Login por el correo anterior (OLD.correo) y actualizan
+--      correo y contraseña, en los cuatro módulos (user_Ofc, user_Aud, user_Per, user_Seg).
+--   6. CHECK en peritaje_Per (fecha_cancelacion solo si está 'Cancelado'; fecha_entrega solo si está
 --      'Dictamen Entregado').
---
--- CAMBIOS DE LA VERSIÓN 3 (buscar "VERSIÓN 3"), por el inicio de sesión único del núcleo:
---   9. intentos_fallidos y bloqueado_hasta pasan de user_Per a Login (el bloqueo de 3 intentos aplica a todos
---      los módulos). El CHECK de intentos también pasa a Login.
---  10. bitacora_Per: nombre_usuario y rol_usuario. El administrador general (SISTEMA_ADMIN) no está en user_Per,
---      así que su id_usuario va NULL y su nombre queda en estas columnas.
---  11. asignacion_Per: la asignación automática es la que no tiene perito saliente. En una reasignación
+-- Versión 3 (inicio de sesión único del núcleo):
+--   7. intentos_fallidos y bloqueado_hasta pasan de user_Per a Login (3 intentos fallidos bloquean
+--      la cuenta 15 minutos en cualquier módulo).
+--   8. bitacora_Per: nombre_usuario y rol_usuario. El administrador general (SISTEMA_ADMIN) no está en
+--      user_Per, así que su id_usuario va NULL y su nombre queda en estas columnas.
+--   9. asignacion_Per: la asignación automática es la que no tiene perito saliente. En una reasignación
 --      manual, id_usuario_cambio NULL significa que la hizo el administrador general.
+-- Versión 3.1:
+--  10. user_Per.carga_trabajo (DFR 2.2, asignación automática al perito de menor carga).
+--  11. demanda_Ofc.tipo (pública o privada).
+-- Versión 4 (buscar "VERSIÓN 4"), cambios de Oficialía:
+--  12. distrito_Ofc, juzgado_Ofc, oficialia_Ofc y materia_Ofc usan llave INT AUTO_INCREMENT
+--      (id_distrito, id_juzgado, id_oficialia, id_materia) en lugar de claves VARCHAR.
+--  13. juzgado_Ofc.num_juzgado, único por distrito. oficialia_Ofc: un juzgado, una oficialía.
+--      oficialia_personal_Ofc: cada usuario en una sola oficialía.
+--  14. demanda_Ofc: llave id_demanda; folio VARCHAR(16) UNIQUE; anio y consecutivo (únicos por oficialía);
+--      motivo_no_procedencia; tipo ENUM('PUBLICA','PRIVADA'); CHECK de al menos un participante.
+--  15. documento_Ofc se liga por id_demanda.
+--  16. En tablas de otros módulos se conserva el nombre de la columna pero ahora son INT:
+--      sala_Seg.clave_distrito, mesa_audiencia_Aud.clave_juzgado y clave_materia,
+--      solicitud_perito_Aud.clave_materia, perito_materia_Per.clave_materia.
+--  17. expediente_Ofc, audiencia_Aud, solicitud_perito_Aud y resolucion_demanda_Aud siguen ligadas
+--      por folio (ahora VARCHAR(16), único en demanda_Ofc).
+--  18. Triggers sin DELIMITER (una sola instrucción cada uno).
 -- Contraseñas: todos los módulos las guardan cifradas con PBKDF2 (nucleo/acceso/Contrasena); el trigger
 -- las copia a Login y el inicio de sesión del núcleo las revisa ahí.
--- Si la base ya está creada con una versión anterior, NO se vuelve a correr este archivo completo:
--- original → versión 2: peritajes-bd-cambios.sql · versión 2 → versión 3: peritajes-bd-cambios-v3.sql.
 -- ==========================================================
 
 CREATE DATABASE IF NOT EXISTS sistema_judicial
@@ -40,328 +59,353 @@ USE sistema_judicial;
 
 -- Catálogo auxiliar de roles. Lo referencian todas las tablas de usuario (user_*).
 CREATE TABLE Rol (
-    id_rol INT NOT NULL AUTO_INCREMENT,
-    rol VARCHAR(50) NOT NULL,
-    CONSTRAINT pk_Rol PRIMARY KEY (id_rol),
-    CONSTRAINT uq_Rol_rol UNIQUE (rol)
+                     id_rol INT NOT NULL AUTO_INCREMENT,
+                     rol VARCHAR(50) NOT NULL,
+                     CONSTRAINT pk_Rol PRIMARY KEY (id_rol),
+                     CONSTRAINT uq_Rol_rol UNIQUE (rol)
 ) ENGINE=InnoDB;
 
 -- Credenciales de acceso de todo el sistema. Se llena automáticamente mediante triggers AFTER INSERT en cada tabla user_*; la PK garantiza que un correo no se repita entre módulos.
 -- VERSIÓN 3: intentos_fallidos y bloqueado_hasta (antes en user_Per): 3 intentos fallidos bloquean
 -- la cuenta 15 minutos en cualquier módulo. Los usa el inicio de sesión del núcleo (/login).
 CREATE TABLE Login (
-    correo VARCHAR(150) NOT NULL,
-    contrasena VARCHAR(255) NOT NULL,
-    intentos_fallidos INT NOT NULL DEFAULT 0,
-    bloqueado_hasta DATETIME NULL,
-    CONSTRAINT pk_Login PRIMARY KEY (correo),
-    CONSTRAINT ck_Login_intentos CHECK (intentos_fallidos >= 0)
+                       correo VARCHAR(150) NOT NULL,
+                       contrasena VARCHAR(255) NOT NULL,
+                       intentos_fallidos INT NOT NULL DEFAULT 0,
+                       bloqueado_hasta DATETIME NULL,
+                       CONSTRAINT pk_Login PRIMARY KEY (correo),
+                       CONSTRAINT ck_Login_intentos CHECK (intentos_fallidos >= 0)
 ) ENGINE=InnoDB;
 
 -- Usuarios del módulo de Oficialía de Partes; también son los usuarios del módulo de Copias Certificadas.
 CREATE TABLE user_Ofc (
-    id_usuario INT NOT NULL AUTO_INCREMENT,
-    nombre VARCHAR(50) NOT NULL,
-    apellido_paterno VARCHAR(50) NOT NULL,
-    apellido_materno VARCHAR(50) NULL,
-    correo VARCHAR(150) NOT NULL,
-    contrasena VARCHAR(255) NOT NULL,
-    id_rol INT NOT NULL,
-    Status BOOLEAN NOT NULL DEFAULT TRUE,
-    fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT pk_user_Ofc PRIMARY KEY (id_usuario),
-    CONSTRAINT uq_user_Ofc_correo UNIQUE (correo),
-    CONSTRAINT fk_user_Ofc_id_rol FOREIGN KEY (id_rol) REFERENCES Rol(id_rol)
+                          id_usuario INT NOT NULL AUTO_INCREMENT,
+                          nombre VARCHAR(50) NOT NULL,
+                          apellido_paterno VARCHAR(50) NOT NULL,
+                          apellido_materno VARCHAR(50) NULL,
+                          correo VARCHAR(150) NOT NULL,
+                          contrasena VARCHAR(255) NOT NULL,
+                          id_rol INT NOT NULL,
+                          Status BOOLEAN NOT NULL DEFAULT TRUE,
+                          fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                          CONSTRAINT pk_user_Ofc PRIMARY KEY (id_usuario),
+                          CONSTRAINT uq_user_Ofc_correo UNIQUE (correo),
+                          CONSTRAINT fk_user_Ofc_id_rol FOREIGN KEY (id_rol) REFERENCES Rol(id_rol)
 ) ENGINE=InnoDB;
 
 -- Catálogo de distritos judiciales. Compartido por todos los módulos.
+-- VERSIÓN 4: llave id_distrito INT (antes clave_distrito VARCHAR).
 CREATE TABLE distrito_Ofc (
-    clave_distrito VARCHAR(10) NOT NULL,
-    nombre VARCHAR(100) NOT NULL,
-    cabecera VARCHAR(150) NULL,
-    estado ENUM('ACTIVO','INACTIVO') NOT NULL DEFAULT 'ACTIVO',
-    CONSTRAINT pk_distrito_Ofc PRIMARY KEY (clave_distrito)
+                              id_distrito INT NOT NULL AUTO_INCREMENT,
+                              nombre VARCHAR(100) NOT NULL,
+                              cabecera VARCHAR(150) NULL,
+                              estado ENUM('ACTIVO','INACTIVO') NOT NULL DEFAULT 'ACTIVO',
+                              CONSTRAINT pk_distrito_Ofc PRIMARY KEY (id_distrito)
 ) ENGINE=InnoDB;
 
 -- Catálogo de juzgados. Compartido por todos los módulos.
+-- VERSIÓN 4: llave id_juzgado INT; num_juzgado es el número del juzgado dentro de su distrito.
 CREATE TABLE juzgado_Ofc (
-    clave_juzgado VARCHAR(10) NOT NULL,
-    nombre VARCHAR(100) NOT NULL,
-    estado ENUM('ACTIVO','INACTIVO') NOT NULL DEFAULT 'ACTIVO',
-    clave_distrito VARCHAR(10) NOT NULL,
-    CONSTRAINT pk_juzgado_Ofc PRIMARY KEY (clave_juzgado),
-    CONSTRAINT fk_juzgado_Ofc_clave_distrito FOREIGN KEY (clave_distrito) REFERENCES distrito_Ofc(clave_distrito)
+                             id_juzgado INT NOT NULL AUTO_INCREMENT,
+                             nombre VARCHAR(100) NOT NULL,
+                             estado ENUM('ACTIVO','INACTIVO') NOT NULL DEFAULT 'ACTIVO',
+                             id_distrito INT NOT NULL,
+                             num_juzgado INT NOT NULL,
+                             CONSTRAINT pk_juzgado_Ofc PRIMARY KEY (id_juzgado),
+                             CONSTRAINT uq_juzgado_distrito_numero UNIQUE (id_distrito, num_juzgado),
+                             CONSTRAINT fk_juzgado_Ofc_id_distrito FOREIGN KEY (id_distrito) REFERENCES distrito_Ofc(id_distrito)
 ) ENGINE=InnoDB;
 
 -- Oficialías de partes registradas.
+-- VERSIÓN 4: llave id_oficialia INT; un juzgado tiene a lo más una oficialía.
 CREATE TABLE oficialia_Ofc (
-    clave_oficialia VARCHAR(10) NOT NULL,
-    nombre VARCHAR(100) NOT NULL,
-    estado ENUM('ACTIVO','INACTIVO') NOT NULL DEFAULT 'ACTIVO',
-    clave_juzgado VARCHAR(10) NOT NULL,
-    CONSTRAINT pk_oficialia_Ofc PRIMARY KEY (clave_oficialia),
-    CONSTRAINT fk_oficialia_Ofc_clave_juzgado FOREIGN KEY (clave_juzgado) REFERENCES juzgado_Ofc(clave_juzgado)
+                               id_oficialia INT NOT NULL AUTO_INCREMENT,
+                               nombre VARCHAR(100) NOT NULL,
+                               estado ENUM('ACTIVO','INACTIVO') NOT NULL DEFAULT 'ACTIVO',
+                               id_juzgado INT NOT NULL,
+                               CONSTRAINT pk_oficialia_Ofc PRIMARY KEY (id_oficialia),
+                               CONSTRAINT uq_oficialia_juzgado UNIQUE (id_juzgado),
+                               CONSTRAINT fk_oficialia_Ofc_id_juzgado FOREIGN KEY (id_juzgado) REFERENCES juzgado_Ofc(id_juzgado)
 ) ENGINE=InnoDB;
 
 -- Relaciona a cada usuario con la oficialía de partes en la que trabaja.
+-- VERSIÓN 4: id_oficialia INT; cada usuario pertenece a una sola oficialía.
 CREATE TABLE oficialia_personal_Ofc (
-    id_op_trabajador INT NOT NULL AUTO_INCREMENT,
-    id_usuario INT NOT NULL,
-    clave_oficialia VARCHAR(10) NOT NULL,
-    CONSTRAINT pk_oficialia_personal_Ofc PRIMARY KEY (id_op_trabajador),
-    CONSTRAINT fk_oficialia_personal_Ofc_id_usuario FOREIGN KEY (id_usuario) REFERENCES user_Ofc(id_usuario),
-    CONSTRAINT fk_oficialia_personal_Ofc_clave_oficialia FOREIGN KEY (clave_oficialia) REFERENCES oficialia_Ofc(clave_oficialia)
+                                        id_op_trabajador INT NOT NULL AUTO_INCREMENT,
+                                        id_usuario INT NOT NULL,
+                                        id_oficialia INT NOT NULL,
+                                        CONSTRAINT pk_oficialia_personal_Ofc PRIMARY KEY (id_op_trabajador),
+                                        CONSTRAINT uq_oficialia_personal_usuario UNIQUE (id_usuario),
+                                        CONSTRAINT fk_oficialia_personal_Ofc_id_usuario FOREIGN KEY (id_usuario) REFERENCES user_Ofc(id_usuario),
+                                        CONSTRAINT fk_oficialia_personal_Ofc_id_oficialia FOREIGN KEY (id_oficialia) REFERENCES oficialia_Ofc(id_oficialia)
 ) ENGINE=InnoDB;
 
 -- Catálogo de materias legales. Compartido por todos los módulos.
+-- VERSIÓN 4: llave id_materia INT (antes clave_materia VARCHAR).
 CREATE TABLE materia_Ofc (
-    clave_materia VARCHAR(10) NOT NULL,
-    nombre VARCHAR(100) NOT NULL,
-    descripcion VARCHAR(255) NULL,
-    estado ENUM('ACTIVO','INACTIVO') NOT NULL DEFAULT 'ACTIVO',
-    CONSTRAINT pk_materia_Ofc PRIMARY KEY (clave_materia),
-    CONSTRAINT uq_materia_Ofc_nombre UNIQUE (nombre)
+                             id_materia INT NOT NULL AUTO_INCREMENT,
+                             nombre VARCHAR(100) NOT NULL,
+                             descripcion VARCHAR(255) NULL,
+                             estado ENUM('ACTIVO','INACTIVO') NOT NULL DEFAULT 'ACTIVO',
+                             CONSTRAINT pk_materia_Ofc PRIMARY KEY (id_materia),
+                             CONSTRAINT uq_materia_Ofc_nombre UNIQUE (nombre)
 ) ENGINE=InnoDB;
 
 -- Personas físicas o morales que participan como partes en una demanda.
 CREATE TABLE persona_Ofc (
-    id_persona INT NOT NULL AUTO_INCREMENT,
-    tipo_persona ENUM('FISICA','MORAL') NOT NULL,
-    nombre VARCHAR(50) NOT NULL,
-    apellido_paterno VARCHAR(50) NULL,
-    apellido_materno VARCHAR(50) NULL,
-    rfc VARCHAR(13) NULL,
-    curp VARCHAR(18) NULL,
-    CONSTRAINT pk_persona_Ofc PRIMARY KEY (id_persona)
+                             id_persona INT NOT NULL AUTO_INCREMENT,
+                             tipo_persona ENUM('FISICA','MORAL') NOT NULL,
+                             nombre VARCHAR(50) NOT NULL,
+                             apellido_paterno VARCHAR(50) NULL,
+                             apellido_materno VARCHAR(50) NULL,
+                             rfc VARCHAR(13) NULL,
+                             curp VARCHAR(18) NULL,
+                             CONSTRAINT pk_persona_Ofc PRIMARY KEY (id_persona)
 ) ENGINE=InnoDB;
 
 -- Demandas recibidas en Oficialía de Partes. La consultan Audiencias y Peritajes.
+-- VERSIÓN 4: llave id_demanda INT. El folio VARCHAR(16) sigue siendo único y es lo que
+-- usan expediente, audiencia, solicitud de perito y resolución. Folio = oficialía + anio + consecutivo.
 CREATE TABLE demanda_Ofc (
-    folio VARCHAR(20) NOT NULL,
-    clave_materia VARCHAR(10) NOT NULL,
-    id_demandante INT NULL,
-    id_demandado INT NULL,
-    descripcion VARCHAR(255) NOT NULL,
-    clave_oficialia VARCHAR(10) NOT NULL,
-    fecha_recepcion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    estado ENUM('PENDIENTE','PROCEDENTE','IMPROCEDENTE') NOT NULL DEFAULT 'PENDIENTE',
-    CONSTRAINT pk_demanda_Ofc PRIMARY KEY (folio),
-    CONSTRAINT fk_demanda_Ofc_clave_materia FOREIGN KEY (clave_materia) REFERENCES materia_Ofc(clave_materia),
-    CONSTRAINT fk_demanda_Ofc_id_demandante FOREIGN KEY (id_demandante) REFERENCES persona_Ofc(id_persona),
-    CONSTRAINT fk_demanda_Ofc_id_demandado FOREIGN KEY (id_demandado) REFERENCES persona_Ofc(id_persona),
-    CONSTRAINT fk_demanda_Ofc_clave_oficialia FOREIGN KEY (clave_oficialia) REFERENCES oficialia_Ofc(clave_oficialia)
+                             id_demanda INT NOT NULL AUTO_INCREMENT,
+                             folio VARCHAR(16) NOT NULL,
+                             anio INT NOT NULL,
+                             consecutivo INT NOT NULL,
+                             id_materia INT NOT NULL,
+                             id_demandante INT NULL,
+                             id_demandado INT NULL,
+                             descripcion VARCHAR(255) NOT NULL,
+                             id_oficialia INT NOT NULL,
+                             fecha_recepcion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                             estado ENUM('PENDIENTE','PROCEDENTE','IMPROCEDENTE') NOT NULL DEFAULT 'PENDIENTE',
+                             tipo ENUM('PUBLICA','PRIVADA') NOT NULL,
+                             motivo_no_procedencia VARCHAR(255) NULL,
+                             CONSTRAINT pk_demanda_Ofc PRIMARY KEY (id_demanda),
+                             CONSTRAINT uq_demanda_folio UNIQUE (folio),
+                             CONSTRAINT uq_demanda_oficialia_anio_consecutivo UNIQUE (id_oficialia, anio, consecutivo),
+    -- Debe existir al menos un participante
+                             CONSTRAINT chk_demanda_participantes CHECK (id_demandante IS NOT NULL OR id_demandado IS NOT NULL),
+                             CONSTRAINT fk_demanda_Ofc_id_materia FOREIGN KEY (id_materia) REFERENCES materia_Ofc(id_materia),
+                             CONSTRAINT fk_demanda_Ofc_id_demandante FOREIGN KEY (id_demandante) REFERENCES persona_Ofc(id_persona),
+                             CONSTRAINT fk_demanda_Ofc_id_demandado FOREIGN KEY (id_demandado) REFERENCES persona_Ofc(id_persona),
+                             CONSTRAINT fk_demanda_Ofc_id_oficialia FOREIGN KEY (id_oficialia) REFERENCES oficialia_Ofc(id_oficialia)
 ) ENGINE=InnoDB;
 
 -- Documentos anexos a una demanda.
+-- VERSIÓN 4: se liga a la demanda por id_demanda (antes por folio).
 CREATE TABLE documento_Ofc (
-    id_documento INT NOT NULL AUTO_INCREMENT,
-    folio VARCHAR(20) NOT NULL,
-    ruta_archivo BLOB NOT NULL,
-    CONSTRAINT pk_documento_Ofc PRIMARY KEY (id_documento),
-    CONSTRAINT fk_documento_Ofc_folio FOREIGN KEY (folio) REFERENCES demanda_Ofc(folio)
+                               id_documento INT NOT NULL AUTO_INCREMENT,
+                               id_demanda INT NOT NULL,
+                               ruta_archivo BLOB NOT NULL,
+                               CONSTRAINT pk_documento_Ofc PRIMARY KEY (id_documento),
+                               CONSTRAINT fk_documento_Ofc_id_demanda FOREIGN KEY (id_demanda) REFERENCES demanda_Ofc(id_demanda)
 ) ENGINE=InnoDB;
 
 -- Usuarios del módulo de Audiencias (administradores y abogados de audiencia).
 CREATE TABLE user_Aud (
-    id_usuario INT NOT NULL AUTO_INCREMENT,
-    nombre VARCHAR(50) NOT NULL,
-    apellido_paterno VARCHAR(50) NOT NULL,
-    apellido_materno VARCHAR(50) NULL,
-    correo VARCHAR(150) NOT NULL,
-    contrasena VARCHAR(255) NOT NULL,
-    id_rol INT NOT NULL,
-    cedula_profesional VARCHAR(20) NULL,
-    fecha_nombramiento DATE NULL,
-    Status BOOLEAN NOT NULL DEFAULT TRUE,
-    CONSTRAINT pk_user_Aud PRIMARY KEY (id_usuario),
-    CONSTRAINT uq_user_Aud_correo UNIQUE (correo),
-    CONSTRAINT fk_user_Aud_id_rol FOREIGN KEY (id_rol) REFERENCES Rol(id_rol)
+                          id_usuario INT NOT NULL AUTO_INCREMENT,
+                          nombre VARCHAR(50) NOT NULL,
+                          apellido_paterno VARCHAR(50) NOT NULL,
+                          apellido_materno VARCHAR(50) NULL,
+                          correo VARCHAR(150) NOT NULL,
+                          contrasena VARCHAR(255) NOT NULL,
+                          id_rol INT NOT NULL,
+                          cedula_profesional VARCHAR(20) NULL,
+                          fecha_nombramiento DATE NULL,
+                          Status BOOLEAN NOT NULL DEFAULT TRUE,
+                          CONSTRAINT pk_user_Aud PRIMARY KEY (id_usuario),
+                          CONSTRAINT uq_user_Aud_correo UNIQUE (correo),
+                          CONSTRAINT fk_user_Aud_id_rol FOREIGN KEY (id_rol) REFERENCES Rol(id_rol)
 ) ENGINE=InnoDB;
 
 -- Mesas de audiencia. Cada mesa pertenece a un juzgado y una materia y tiene un abogado fijo (1:1). El distrito se obtiene del juzgado.
+-- VERSIÓN 4: clave_juzgado y clave_materia conservan el nombre pero ahora son INT (id_juzgado / id_materia).
 CREATE TABLE mesa_audiencia_Aud (
-    id_mesa INT NOT NULL AUTO_INCREMENT,
-    nombre_mesa VARCHAR(100) NOT NULL,
-    clave_juzgado VARCHAR(10) NOT NULL,
-    clave_materia VARCHAR(10) NOT NULL,
-    id_abogado_asignado INT NOT NULL,
-    CONSTRAINT pk_mesa_audiencia_Aud PRIMARY KEY (id_mesa),
-    CONSTRAINT uq_mesa_audiencia_Aud_id_abogado_asignado UNIQUE (id_abogado_asignado),
-    CONSTRAINT uq_mesa_juzgado UNIQUE (nombre_mesa, clave_juzgado),
-    CONSTRAINT fk_mesa_audiencia_Aud_clave_juzgado FOREIGN KEY (clave_juzgado) REFERENCES juzgado_Ofc(clave_juzgado),
-    CONSTRAINT fk_mesa_audiencia_Aud_clave_materia FOREIGN KEY (clave_materia) REFERENCES materia_Ofc(clave_materia),
-    CONSTRAINT fk_mesa_audiencia_Aud_id_abogado_asignado FOREIGN KEY (id_abogado_asignado) REFERENCES user_Aud(id_usuario)
+                                    id_mesa INT NOT NULL AUTO_INCREMENT,
+                                    nombre_mesa VARCHAR(100) NOT NULL,
+                                    clave_juzgado INT NOT NULL,
+                                    clave_materia INT NOT NULL,
+                                    id_abogado_asignado INT NOT NULL,
+                                    CONSTRAINT pk_mesa_audiencia_Aud PRIMARY KEY (id_mesa),
+                                    CONSTRAINT uq_mesa_audiencia_Aud_id_abogado_asignado UNIQUE (id_abogado_asignado),
+                                    CONSTRAINT uq_mesa_juzgado UNIQUE (nombre_mesa, clave_juzgado),
+                                    CONSTRAINT fk_mesa_audiencia_Aud_clave_juzgado FOREIGN KEY (clave_juzgado) REFERENCES juzgado_Ofc(id_juzgado),
+                                    CONSTRAINT fk_mesa_audiencia_Aud_clave_materia FOREIGN KEY (clave_materia) REFERENCES materia_Ofc(id_materia),
+                                    CONSTRAINT fk_mesa_audiencia_Aud_id_abogado_asignado FOREIGN KEY (id_abogado_asignado) REFERENCES user_Aud(id_usuario)
 ) ENGINE=InnoDB;
 
 -- Expediente generado cuando una demanda procede. Lo consultan Audiencias, Segunda Instancia y Copias Certificadas.
 CREATE TABLE expediente_Ofc (
-    num_expediente VARCHAR(20) NOT NULL,
-    folio VARCHAR(20) NOT NULL,
-    fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    estado ENUM('ACTIVA','CONCLUIDA') NOT NULL DEFAULT 'ACTIVA',
-    clasificacion ENUM('PUBLICO','PRIVADO') NOT NULL,
-    id_mesa INT NOT NULL,
-    CONSTRAINT pk_expediente_Ofc PRIMARY KEY (num_expediente),
-    CONSTRAINT uq_expediente_Ofc_folio UNIQUE (folio),
-    CONSTRAINT fk_expediente_Ofc_folio FOREIGN KEY (folio) REFERENCES demanda_Ofc(folio),
-    CONSTRAINT fk_expediente_Ofc_id_mesa FOREIGN KEY (id_mesa) REFERENCES mesa_audiencia_Aud(id_mesa)
+                                num_expediente VARCHAR(20) NOT NULL,
+                                folio VARCHAR(16) NOT NULL,
+                                fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                estado ENUM('ACTIVA','CONCLUIDA') NOT NULL DEFAULT 'ACTIVA',
+                                clasificacion ENUM('PUBLICO','PRIVADO') NOT NULL,
+                                id_mesa INT NOT NULL,
+                                CONSTRAINT pk_expediente_Ofc PRIMARY KEY (num_expediente),
+                                CONSTRAINT uq_expediente_Ofc_folio UNIQUE (folio),
+                                CONSTRAINT fk_expediente_Ofc_folio FOREIGN KEY (folio) REFERENCES demanda_Ofc(folio),
+                                CONSTRAINT fk_expediente_Ofc_id_mesa FOREIGN KEY (id_mesa) REFERENCES mesa_audiencia_Aud(id_mesa)
 ) ENGINE=InnoDB;
 
 -- Salas de Segunda Instancia.
 CREATE TABLE sala_Seg (
-    id_sala BIGINT NOT NULL AUTO_INCREMENT,
-    clave_distrito VARCHAR(10) NOT NULL,
-    nombre VARCHAR(100) NOT NULL,
-    direccion VARCHAR(255) NOT NULL,
-    estatus BOOLEAN NOT NULL DEFAULT TRUE,
-    fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT pk_sala_Seg PRIMARY KEY (id_sala),
-    CONSTRAINT fk_sala_Seg_clave_distrito FOREIGN KEY (clave_distrito) REFERENCES distrito_Ofc(clave_distrito)
+                          id_sala BIGINT NOT NULL AUTO_INCREMENT,
+                          clave_distrito INT NOT NULL,
+                          nombre VARCHAR(100) NOT NULL,
+                          direccion VARCHAR(255) NOT NULL,
+                          estatus BOOLEAN NOT NULL DEFAULT TRUE,
+                          fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                          CONSTRAINT pk_sala_Seg PRIMARY KEY (id_sala),
+                          CONSTRAINT fk_sala_Seg_clave_distrito FOREIGN KEY (clave_distrito) REFERENCES distrito_Ofc(id_distrito)
 ) ENGINE=InnoDB;
 
 -- Registro en Oficialía del envío de un expediente a Segunda Instancia.
 CREATE TABLE segunda_instancia_Ofc (
-    id_segunda_instancia INT NOT NULL AUTO_INCREMENT,
-    num_expediente VARCHAR(20) NOT NULL,
-    id_sala BIGINT NOT NULL,
-    fecha_registro DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    estado ENUM('REGISTRADA','ENVIADA','RECIBIDA') NOT NULL DEFAULT 'REGISTRADA',
-    CONSTRAINT pk_segunda_instancia_Ofc PRIMARY KEY (id_segunda_instancia),
-    CONSTRAINT fk_segunda_instancia_Ofc_num_expediente FOREIGN KEY (num_expediente) REFERENCES expediente_Ofc(num_expediente),
-    CONSTRAINT fk_segunda_instancia_Ofc_id_sala FOREIGN KEY (id_sala) REFERENCES sala_Seg(id_sala)
+                                       id_segunda_instancia INT NOT NULL AUTO_INCREMENT,
+                                       num_expediente VARCHAR(20) NOT NULL,
+                                       id_sala BIGINT NOT NULL,
+                                       fecha_registro DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                       estado ENUM('REGISTRADA','ENVIADA','RECIBIDA') NOT NULL DEFAULT 'REGISTRADA',
+                                       CONSTRAINT pk_segunda_instancia_Ofc PRIMARY KEY (id_segunda_instancia),
+                                       CONSTRAINT fk_segunda_instancia_Ofc_num_expediente FOREIGN KEY (num_expediente) REFERENCES expediente_Ofc(num_expediente),
+                                       CONSTRAINT fk_segunda_instancia_Ofc_id_sala FOREIGN KEY (id_sala) REFERENCES sala_Seg(id_sala)
 ) ENGINE=InnoDB;
 
 -- Bitácora de operaciones de Oficialía de Partes y de Copias Certificadas.
 CREATE TABLE bitacora_Ofc (
-    id_bitacora INT NOT NULL AUTO_INCREMENT,
-    fecha_hora DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    fuente ENUM('APLICACION','BASE DE DATOS') NOT NULL,
-    nombre_tabla VARCHAR(50) NOT NULL,
-    operacion ENUM('INSERT','UPDATE','DELETE') NOT NULL,
-    id_registro VARCHAR(50) NOT NULL,
-    id_usuario_aplicacion INT NULL,
-    usuario_bd VARCHAR(50) NULL,
-    datos_anteriores JSON NULL,
-    datos_nuevos JSON NULL,
-    CONSTRAINT pk_bitacora_Ofc PRIMARY KEY (id_bitacora),
-    CONSTRAINT fk_bitacora_Ofc_id_usuario_aplicacion FOREIGN KEY (id_usuario_aplicacion) REFERENCES user_Ofc(id_usuario) ON DELETE SET NULL
+                              id_bitacora INT NOT NULL AUTO_INCREMENT,
+                              fecha_hora DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                              fuente ENUM('APLICACION','BASE DE DATOS') NOT NULL,
+                              nombre_tabla VARCHAR(50) NOT NULL,
+                              operacion ENUM('INSERT','UPDATE','DELETE') NOT NULL,
+                              id_registro VARCHAR(50) NOT NULL,
+                              id_usuario_aplicacion INT NULL,
+                              usuario_bd VARCHAR(50) NULL,
+                              datos_anteriores JSON NULL,
+                              datos_nuevos JSON NULL,
+                              CONSTRAINT pk_bitacora_Ofc PRIMARY KEY (id_bitacora),
+                              CONSTRAINT fk_bitacora_Ofc_id_usuario_aplicacion FOREIGN KEY (id_usuario_aplicacion) REFERENCES user_Ofc(id_usuario) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- Audiencias de una demanda. El abogado que atiende se obtiene de la mesa del expediente de la demanda.
 CREATE TABLE audiencia_Aud (
-    id_audiencia INT NOT NULL AUTO_INCREMENT,
-    folio VARCHAR(20) NOT NULL,
-    fecha_hora_inicio DATETIME NOT NULL,
-    estado_audiencia ENUM('PROGRAMADA','SUSPENDIDA_POR_INASISTENCIA','CELEBRADA','REPROGRAMADA') NOT NULL DEFAULT 'PROGRAMADA',
-    declaracion_demandante TEXT NULL,
-    declaracion_demandado TEXT NULL,
-    declaracion_rep_legales TEXT NULL,
-    acta_firmada_url VARCHAR(500) NULL,
-    CONSTRAINT pk_audiencia_Aud PRIMARY KEY (id_audiencia),
-    CONSTRAINT fk_audiencia_Aud_folio FOREIGN KEY (folio) REFERENCES demanda_Ofc(folio)
+                               id_audiencia INT NOT NULL AUTO_INCREMENT,
+                               folio VARCHAR(16) NOT NULL,
+                               fecha_hora_inicio DATETIME NOT NULL,
+                               estado_audiencia ENUM('PROGRAMADA','SUSPENDIDA_POR_INASISTENCIA','CELEBRADA','REPROGRAMADA') NOT NULL DEFAULT 'PROGRAMADA',
+                               declaracion_demandante TEXT NULL,
+                               declaracion_demandado TEXT NULL,
+                               declaracion_rep_legales TEXT NULL,
+                               acta_firmada_url VARCHAR(500) NULL,
+                               CONSTRAINT pk_audiencia_Aud PRIMARY KEY (id_audiencia),
+                               CONSTRAINT fk_audiencia_Aud_folio FOREIGN KEY (folio) REFERENCES demanda_Ofc(folio)
 ) ENGINE=InnoDB;
 
 -- Pase de lista individual de los participantes de una audiencia.
 CREATE TABLE participante_audiencia_Aud (
-    id_participante INT NOT NULL AUTO_INCREMENT,
-    id_audiencia INT NOT NULL,
-    nombre VARCHAR(50) NOT NULL,
-    apellido_paterno VARCHAR(50) NOT NULL,
-    apellido_materno VARCHAR(50) NULL,
-    rol_participante ENUM('DEMANDANTE','DEMANDADO','REP_LEGAL','PERITO') NOT NULL,
-    asistencia BOOLEAN NULL,
-    CONSTRAINT pk_participante_audiencia_Aud PRIMARY KEY (id_participante),
-    CONSTRAINT fk_participante_audiencia_Aud_id_audiencia FOREIGN KEY (id_audiencia) REFERENCES audiencia_Aud(id_audiencia)
+                                            id_participante INT NOT NULL AUTO_INCREMENT,
+                                            id_audiencia INT NOT NULL,
+                                            nombre VARCHAR(50) NOT NULL,
+                                            apellido_paterno VARCHAR(50) NOT NULL,
+                                            apellido_materno VARCHAR(50) NULL,
+                                            rol_participante ENUM('DEMANDANTE','DEMANDADO','REP_LEGAL','PERITO') NOT NULL,
+                                            asistencia BOOLEAN NULL,
+                                            CONSTRAINT pk_participante_audiencia_Aud PRIMARY KEY (id_participante),
+                                            CONSTRAINT fk_participante_audiencia_Aud_id_audiencia FOREIGN KEY (id_audiencia) REFERENCES audiencia_Aud(id_audiencia)
 ) ENGINE=InnoDB;
 
 -- Solicitudes de peritaje que Audiencias envía al módulo de Peritajes. El perito asignado se obtiene de asignacion_Per.
 CREATE TABLE solicitud_perito_Aud (
-    id_solicitud_perito INT NOT NULL AUTO_INCREMENT,
-    folio VARCHAR(20) NOT NULL,
-    clave_materia VARCHAR(10) NOT NULL,
-    CONSTRAINT pk_solicitud_perito_Aud PRIMARY KEY (id_solicitud_perito),
-    CONSTRAINT fk_solicitud_perito_Aud_folio FOREIGN KEY (folio) REFERENCES demanda_Ofc(folio),
-    CONSTRAINT fk_solicitud_perito_Aud_clave_materia FOREIGN KEY (clave_materia) REFERENCES materia_Ofc(clave_materia)
+                                      id_solicitud_perito INT NOT NULL AUTO_INCREMENT,
+                                      folio VARCHAR(16) NOT NULL,
+                                      clave_materia INT NOT NULL,
+                                      CONSTRAINT pk_solicitud_perito_Aud PRIMARY KEY (id_solicitud_perito),
+                                      CONSTRAINT fk_solicitud_perito_Aud_folio FOREIGN KEY (folio) REFERENCES demanda_Ofc(folio),
+                                      CONSTRAINT fk_solicitud_perito_Aud_clave_materia FOREIGN KEY (clave_materia) REFERENCES materia_Ofc(id_materia)
 ) ENGINE=InnoDB;
 
 -- Resolución de la demanda emitida en Audiencias (una por demanda).
 CREATE TABLE resolucion_demanda_Aud (
-    id_resolucion INT NOT NULL AUTO_INCREMENT,
-    folio VARCHAR(20) NOT NULL,
-    id_abogado INT NOT NULL,
-    resolucion TEXT NOT NULL,
-    sentido ENUM('FAVOR_DEMANDANTE','FAVOR_DEMANDADO','ACUERDO_PARTES') NOT NULL,
-    fecha_resolucion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT pk_resolucion_demanda_Aud PRIMARY KEY (id_resolucion),
-    CONSTRAINT uq_resolucion_demanda_Aud_folio UNIQUE (folio),
-    CONSTRAINT fk_resolucion_demanda_Aud_folio FOREIGN KEY (folio) REFERENCES demanda_Ofc(folio),
-    CONSTRAINT fk_resolucion_demanda_Aud_id_abogado FOREIGN KEY (id_abogado) REFERENCES user_Aud(id_usuario)
+                                        id_resolucion INT NOT NULL AUTO_INCREMENT,
+                                        folio VARCHAR(16) NOT NULL,
+                                        id_abogado INT NOT NULL,
+                                        resolucion TEXT NOT NULL,
+                                        sentido ENUM('FAVOR_DEMANDANTE','FAVOR_DEMANDADO','ACUERDO_PARTES') NOT NULL,
+                                        fecha_resolucion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                        CONSTRAINT pk_resolucion_demanda_Aud PRIMARY KEY (id_resolucion),
+                                        CONSTRAINT uq_resolucion_demanda_Aud_folio UNIQUE (folio),
+                                        CONSTRAINT fk_resolucion_demanda_Aud_folio FOREIGN KEY (folio) REFERENCES demanda_Ofc(folio),
+                                        CONSTRAINT fk_resolucion_demanda_Aud_id_abogado FOREIGN KEY (id_abogado) REFERENCES user_Aud(id_usuario)
 ) ENGINE=InnoDB;
 
 -- Bitácora inalterable de Audiencias. Nombre y rol del actor se obtienen de user_Aud y Rol.
 CREATE TABLE bitacora_Aud (
-    id_bitacora BIGINT NOT NULL AUTO_INCREMENT,
-    id_usuario INT NULL,
-    tipo_accion VARCHAR(100) NOT NULL,
-    operacion ENUM('CONSULTA','CREACION','EDICION','FINALIZACION') NOT NULL,
-    referencia VARCHAR(100) NOT NULL,
-    fecha_hora DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    CONSTRAINT pk_bitacora_Aud PRIMARY KEY (id_bitacora),
-    CONSTRAINT fk_bitacora_Aud_id_usuario FOREIGN KEY (id_usuario) REFERENCES user_Aud(id_usuario) ON DELETE SET NULL
+                              id_bitacora BIGINT NOT NULL AUTO_INCREMENT,
+                              id_usuario INT NULL,
+                              tipo_accion VARCHAR(100) NOT NULL,
+                              operacion ENUM('CONSULTA','CREACION','EDICION','FINALIZACION') NOT NULL,
+                              referencia VARCHAR(100) NOT NULL,
+                              fecha_hora DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+                              CONSTRAINT pk_bitacora_Aud PRIMARY KEY (id_bitacora),
+                              CONSTRAINT fk_bitacora_Aud_id_usuario FOREIGN KEY (id_usuario) REFERENCES user_Aud(id_usuario) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- Usuarios del módulo de Peritajes (administradores y peritos).
 -- VERSIÓN 3: intentos_fallidos y bloqueado_hasta pasaron a Login.
 CREATE TABLE user_Per (
-    id_usuario INT NOT NULL AUTO_INCREMENT,
-    nombre VARCHAR(50) NOT NULL,
-    apellido_paterno VARCHAR(50) NOT NULL,
-    apellido_materno VARCHAR(50) NULL,
-    correo VARCHAR(150) NOT NULL,
-    contrasena VARCHAR(255) NOT NULL,
-    id_rol INT NOT NULL,
-    Status BOOLEAN NOT NULL DEFAULT TRUE,
-    CONSTRAINT pk_user_Per PRIMARY KEY (id_usuario),
-    CONSTRAINT uq_user_Per_correo UNIQUE (correo),
-    CONSTRAINT fk_user_Per_id_rol FOREIGN KEY (id_rol) REFERENCES Rol(id_rol)
+                          id_usuario INT NOT NULL AUTO_INCREMENT,
+                          nombre VARCHAR(50) NOT NULL,
+                          apellido_paterno VARCHAR(50) NOT NULL,
+                          apellido_materno VARCHAR(50) NULL,
+                          correo VARCHAR(150) NOT NULL,
+                          contrasena VARCHAR(255) NOT NULL,
+                          id_rol INT NOT NULL,
+                          Status BOOLEAN NOT NULL DEFAULT TRUE,
+    -- Carga de trabajo (DFR 2.2): cuántos peritajes tiene "Asignado" o "En Proceso" en su asignación vigente.
+    -- La recalcula el código (PeritajeDao.actualizarCarga) al asignar, reasignar y entregar. No se edita a mano.
+                          carga_trabajo INT NOT NULL DEFAULT 0,
+                          CONSTRAINT pk_user_Per PRIMARY KEY (id_usuario),
+                          CONSTRAINT uq_user_Per_correo UNIQUE (correo),
+                          CONSTRAINT fk_user_Per_id_rol FOREIGN KEY (id_rol) REFERENCES Rol(id_rol)
 ) ENGINE=InnoDB;
 
 -- Acreditaciones académicas, certificaciones y especialidades del perito.
 CREATE TABLE educacion_especialidad_Per (
-    id_especialidad INT NOT NULL AUTO_INCREMENT,
-    id_usuario INT NOT NULL,
-    descripcion_especialidad VARCHAR(200) NOT NULL,
-    CONSTRAINT pk_educacion_especialidad_Per PRIMARY KEY (id_especialidad),
-    CONSTRAINT fk_educacion_especialidad_Per_id_usuario FOREIGN KEY (id_usuario) REFERENCES user_Per(id_usuario)
+                                            id_especialidad INT NOT NULL AUTO_INCREMENT,
+                                            id_usuario INT NOT NULL,
+                                            descripcion_especialidad VARCHAR(200) NOT NULL,
+                                            CONSTRAINT pk_educacion_especialidad_Per PRIMARY KEY (id_especialidad),
+                                            CONSTRAINT fk_educacion_especialidad_Per_id_usuario FOREIGN KEY (id_usuario) REFERENCES user_Per(id_usuario)
 ) ENGINE=InnoDB;
 
 -- Tabla intermedia: materias que cada perito tiene habilitadas.
 CREATE TABLE perito_materia_Per (
-    id_usuario INT NOT NULL,
-    clave_materia VARCHAR(10) NOT NULL,
-    CONSTRAINT pk_perito_materia_Per PRIMARY KEY (id_usuario, clave_materia),
-    CONSTRAINT fk_perito_materia_Per_id_usuario FOREIGN KEY (id_usuario) REFERENCES user_Per(id_usuario),
-    CONSTRAINT fk_perito_materia_Per_clave_materia FOREIGN KEY (clave_materia) REFERENCES materia_Ofc(clave_materia)
+                                    id_usuario INT NOT NULL,
+                                    clave_materia INT NOT NULL,
+                                    CONSTRAINT pk_perito_materia_Per PRIMARY KEY (id_usuario, clave_materia),
+                                    CONSTRAINT fk_perito_materia_Per_id_usuario FOREIGN KEY (id_usuario) REFERENCES user_Per(id_usuario),
+                                    CONSTRAINT fk_perito_materia_Per_clave_materia FOREIGN KEY (clave_materia) REFERENCES materia_Ofc(id_materia)
 ) ENGINE=InnoDB;
 
 -- Expediente técnico que atiende una solicitud de perito de Audiencias. Demanda y materia se obtienen de la solicitud.
 -- CAMBIO PERITAJES: fecha_apertura (primera vez que el perito abre el expediente, RF 4.2), fecha_entrega (RF 4.4)
 -- y fecha_cancelacion (RF 2.4). La fecha de solicitud es fecha_creacion.
 CREATE TABLE peritaje_Per (
-    id_peritaje INT NOT NULL AUTO_INCREMENT,
-    id_solicitud_perito INT NOT NULL,
-    demanda_adjunta TEXT NULL,
-    estado_peritaje ENUM('Pendiente de Asignación','Asignado','En Proceso','Dictamen Entregado','Cancelado') NOT NULL,
-    fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    fecha_apertura DATETIME NULL,
-    fecha_entrega DATETIME NULL,
-    fecha_cancelacion DATETIME NULL,
-    CONSTRAINT pk_peritaje_Per PRIMARY KEY (id_peritaje),
-    CONSTRAINT uq_peritaje_Per_id_solicitud_perito UNIQUE (id_solicitud_perito),
+                              id_peritaje INT NOT NULL AUTO_INCREMENT,
+                              id_solicitud_perito INT NOT NULL,
+                              demanda_adjunta TEXT NULL,
+                              estado_peritaje ENUM('Pendiente de Asignación','Asignado','En Proceso','Dictamen Entregado','Cancelado') NOT NULL,
+                              fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                              fecha_apertura DATETIME NULL,
+                              fecha_entrega DATETIME NULL,
+                              fecha_cancelacion DATETIME NULL,
+                              CONSTRAINT pk_peritaje_Per PRIMARY KEY (id_peritaje),
+                              CONSTRAINT uq_peritaje_Per_id_solicitud_perito UNIQUE (id_solicitud_perito),
     -- CORRECCIÓN: las fechas de cierre deben coincidir con el estado del peritaje.
-    CONSTRAINT ck_peritaje_Per_cancelacion CHECK (fecha_cancelacion IS NULL OR estado_peritaje = 'Cancelado'),
-    CONSTRAINT ck_peritaje_Per_entrega CHECK (fecha_entrega IS NULL OR estado_peritaje = 'Dictamen Entregado'),
-    CONSTRAINT fk_peritaje_Per_id_solicitud_perito FOREIGN KEY (id_solicitud_perito) REFERENCES solicitud_perito_Aud(id_solicitud_perito)
+                              CONSTRAINT ck_peritaje_Per_cancelacion CHECK (fecha_cancelacion IS NULL OR estado_peritaje = 'Cancelado'),
+                              CONSTRAINT ck_peritaje_Per_entrega CHECK (fecha_entrega IS NULL OR estado_peritaje = 'Dictamen Entregado'),
+                              CONSTRAINT fk_peritaje_Per_id_solicitud_perito FOREIGN KEY (id_solicitud_perito) REFERENCES solicitud_perito_Aud(id_solicitud_perito)
 ) ENGINE=InnoDB;
 
 -- Asignación activa del perito e historial de reasignaciones.
@@ -369,46 +413,46 @@ CREATE TABLE peritaje_Per (
 -- VERSIÓN 3: sin perito saliente = asignación automática del sistema; con perito saliente = reasignación manual.
 -- En la manual, id_usuario_cambio es quien la hizo; NULL = el administrador general (no está en user_Per).
 CREATE TABLE asignacion_Per (
-    id_asignacion INT NOT NULL AUTO_INCREMENT,
-    id_peritaje INT NOT NULL,
-    id_perito_asignado INT NOT NULL,
-    id_perito_saliente INT NULL,
-    id_usuario_cambio INT NULL,
-    motivo_reasignacion TEXT NULL,
-    fecha_hora_asignacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT pk_asignacion_Per PRIMARY KEY (id_asignacion),
-    CONSTRAINT fk_asignacion_Per_id_peritaje FOREIGN KEY (id_peritaje) REFERENCES peritaje_Per(id_peritaje),
-    CONSTRAINT fk_asignacion_Per_id_perito_asignado FOREIGN KEY (id_perito_asignado) REFERENCES user_Per(id_usuario),
-    CONSTRAINT fk_asignacion_Per_id_perito_saliente FOREIGN KEY (id_perito_saliente) REFERENCES user_Per(id_usuario),
-    CONSTRAINT fk_asignacion_Per_id_usuario_cambio FOREIGN KEY (id_usuario_cambio) REFERENCES user_Per(id_usuario)
+                                id_asignacion INT NOT NULL AUTO_INCREMENT,
+                                id_peritaje INT NOT NULL,
+                                id_perito_asignado INT NOT NULL,
+                                id_perito_saliente INT NULL,
+                                id_usuario_cambio INT NULL,
+                                motivo_reasignacion TEXT NULL,
+                                fecha_hora_asignacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                CONSTRAINT pk_asignacion_Per PRIMARY KEY (id_asignacion),
+                                CONSTRAINT fk_asignacion_Per_id_peritaje FOREIGN KEY (id_peritaje) REFERENCES peritaje_Per(id_peritaje),
+                                CONSTRAINT fk_asignacion_Per_id_perito_asignado FOREIGN KEY (id_perito_asignado) REFERENCES user_Per(id_usuario),
+                                CONSTRAINT fk_asignacion_Per_id_perito_saliente FOREIGN KEY (id_perito_saliente) REFERENCES user_Per(id_usuario),
+                                CONSTRAINT fk_asignacion_Per_id_usuario_cambio FOREIGN KEY (id_usuario_cambio) REFERENCES user_Per(id_usuario)
 ) ENGINE=InnoDB;
 
 -- Conclusiones técnicas redactadas por el perito (uno por peritaje).
 -- CAMBIO PERITAJES: version. Cada guardado hace "version = version + 1 WHERE version = ?"; si no cambia
 -- ninguna fila, otra ventana guardó antes y se avisa "Hay cambios más recientes en otra ventana" (RF 4.3).
 CREATE TABLE dictamen_Per (
-    id_dictamen INT NOT NULL AUTO_INCREMENT,
-    id_peritaje INT NOT NULL,
-    contenido_texto LONGTEXT NULL,
-    fecha_ultimo_guardado DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    es_finalizado BOOLEAN NOT NULL DEFAULT FALSE,
-    version INT NOT NULL DEFAULT 0,
-    CONSTRAINT pk_dictamen_Per PRIMARY KEY (id_dictamen),
-    CONSTRAINT uq_dictamen_Per_id_peritaje UNIQUE (id_peritaje),
-    CONSTRAINT fk_dictamen_Per_id_peritaje FOREIGN KEY (id_peritaje) REFERENCES peritaje_Per(id_peritaje)
+                              id_dictamen INT NOT NULL AUTO_INCREMENT,
+                              id_peritaje INT NOT NULL,
+                              contenido_texto LONGTEXT NULL,
+                              fecha_ultimo_guardado DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                              es_finalizado BOOLEAN NOT NULL DEFAULT FALSE,
+                              version INT NOT NULL DEFAULT 0,
+                              CONSTRAINT pk_dictamen_Per PRIMARY KEY (id_dictamen),
+                              CONSTRAINT uq_dictamen_Per_id_peritaje UNIQUE (id_peritaje),
+                              CONSTRAINT fk_dictamen_Per_id_peritaje FOREIGN KEY (id_peritaje) REFERENCES peritaje_Per(id_peritaje)
 ) ENGINE=InnoDB;
 
 -- Archivos adjuntos del dictamen.
 CREATE TABLE anexo_dictamen_Per (
-    id_anexo INT NOT NULL AUTO_INCREMENT,
-    id_dictamen INT NOT NULL,
-    nombre_archivo VARCHAR(200) NOT NULL,
-    formato_archivo VARCHAR(20) NOT NULL,
-    tamano_mb DECIMAL(5,2) NOT NULL,
-    archivo_contenido LONGBLOB NOT NULL,
-    CONSTRAINT pk_anexo_dictamen_Per PRIMARY KEY (id_anexo),
-    CONSTRAINT ck_anexo_dictamen_Per_tamano_mb CHECK (tamano_mb <= 25.00),
-    CONSTRAINT fk_anexo_dictamen_Per_id_dictamen FOREIGN KEY (id_dictamen) REFERENCES dictamen_Per(id_dictamen)
+                                    id_anexo INT NOT NULL AUTO_INCREMENT,
+                                    id_dictamen INT NOT NULL,
+                                    nombre_archivo VARCHAR(200) NOT NULL,
+                                    formato_archivo VARCHAR(20) NOT NULL,
+                                    tamano_mb DECIMAL(5,2) NOT NULL,
+                                    archivo_contenido LONGBLOB NOT NULL,
+                                    CONSTRAINT pk_anexo_dictamen_Per PRIMARY KEY (id_anexo),
+                                    CONSTRAINT ck_anexo_dictamen_Per_tamano_mb CHECK (tamano_mb <= 25.00),
+                                    CONSTRAINT fk_anexo_dictamen_Per_id_dictamen FOREIGN KEY (id_dictamen) REFERENCES dictamen_Per(id_dictamen)
 ) ENGINE=InnoDB;
 
 -- Registro histórico inmutable de eventos del módulo de Peritajes.
@@ -416,283 +460,434 @@ CREATE TABLE anexo_dictamen_Per (
 -- VERSIÓN 3: nombre_usuario y rol_usuario de quien hizo el movimiento. id_usuario NULL = el sistema
 -- (asignación automática) o el administrador general (no está en user_Per).
 CREATE TABLE bitacora_Per (
-    id_bitacora INT NOT NULL AUTO_INCREMENT,
-    fecha_hora DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    id_usuario INT NULL,
-    nombre_usuario VARCHAR(150) NULL,
-    rol_usuario VARCHAR(50) NULL,
-    tipo_evento VARCHAR(100) NOT NULL,
-    referencia VARCHAR(50) NULL,
-    detalle_movimiento TEXT NULL,
-    CONSTRAINT pk_bitacora_Per PRIMARY KEY (id_bitacora),
-    CONSTRAINT fk_bitacora_Per_id_usuario FOREIGN KEY (id_usuario) REFERENCES user_Per(id_usuario) ON DELETE SET NULL
+                              id_bitacora INT NOT NULL AUTO_INCREMENT,
+                              fecha_hora DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                              id_usuario INT NULL,
+                              nombre_usuario VARCHAR(150) NULL,
+                              rol_usuario VARCHAR(50) NULL,
+                              tipo_evento VARCHAR(100) NOT NULL,
+                              referencia VARCHAR(50) NULL,
+                              detalle_movimiento TEXT NULL,
+                              CONSTRAINT pk_bitacora_Per PRIMARY KEY (id_bitacora),
+                              CONSTRAINT fk_bitacora_Per_id_usuario FOREIGN KEY (id_usuario) REFERENCES user_Per(id_usuario) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- Avisos enviados a los usuarios por dashboard o correo.
 CREATE TABLE notificacion_Per (
-    id_notificacion INT NOT NULL AUTO_INCREMENT,
-    id_usuario INT NOT NULL,
-    id_peritaje INT NULL,
-    evento_origen VARCHAR(50) NOT NULL,
-    mensaje TEXT NOT NULL,
-    enviado_correo BOOLEAN NOT NULL DEFAULT FALSE,
-    CONSTRAINT pk_notificacion_Per PRIMARY KEY (id_notificacion),
-    CONSTRAINT fk_notificacion_Per_id_usuario FOREIGN KEY (id_usuario) REFERENCES user_Per(id_usuario),
-    CONSTRAINT fk_notificacion_Per_id_peritaje FOREIGN KEY (id_peritaje) REFERENCES peritaje_Per(id_peritaje)
+                                  id_notificacion INT NOT NULL AUTO_INCREMENT,
+                                  id_usuario INT NOT NULL,
+                                  id_peritaje INT NULL,
+                                  evento_origen VARCHAR(50) NOT NULL,
+                                  mensaje TEXT NOT NULL,
+                                  enviado_correo BOOLEAN NOT NULL DEFAULT FALSE,
+                                  CONSTRAINT pk_notificacion_Per PRIMARY KEY (id_notificacion),
+                                  CONSTRAINT fk_notificacion_Per_id_usuario FOREIGN KEY (id_usuario) REFERENCES user_Per(id_usuario),
+                                  CONSTRAINT fk_notificacion_Per_id_peritaje FOREIGN KEY (id_peritaje) REFERENCES peritaje_Per(id_peritaje)
 ) ENGINE=InnoDB;
 
 -- Usuarios del módulo de Segunda Instancia (magistrados y administradores).
 CREATE TABLE user_Seg (
-    id_usuario BIGINT NOT NULL AUTO_INCREMENT,
-    nombre VARCHAR(50) NOT NULL,
-    apellido_paterno VARCHAR(50) NOT NULL,
-    apellido_materno VARCHAR(50) NULL,
-    telefono VARCHAR(10) NULL,
-    correo VARCHAR(150) NOT NULL,
-    contrasena VARCHAR(255) NOT NULL,
-    id_rol INT NOT NULL,
-    Status BOOLEAN NOT NULL DEFAULT TRUE,
-    fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT pk_user_Seg PRIMARY KEY (id_usuario),
-    CONSTRAINT uq_user_Seg_correo UNIQUE (correo),
-    CONSTRAINT fk_user_Seg_id_rol FOREIGN KEY (id_rol) REFERENCES Rol(id_rol)
+                          id_usuario BIGINT NOT NULL AUTO_INCREMENT,
+                          nombre VARCHAR(50) NOT NULL,
+                          apellido_paterno VARCHAR(50) NOT NULL,
+                          apellido_materno VARCHAR(50) NULL,
+                          telefono VARCHAR(10) NULL,
+                          correo VARCHAR(150) NOT NULL,
+                          contrasena VARCHAR(255) NOT NULL,
+                          id_rol INT NOT NULL,
+                          Status BOOLEAN NOT NULL DEFAULT TRUE,
+                          fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                          CONSTRAINT pk_user_Seg PRIMARY KEY (id_usuario),
+                          CONSTRAINT uq_user_Seg_correo UNIQUE (correo),
+                          CONSTRAINT fk_user_Seg_id_rol FOREIGN KEY (id_rol) REFERENCES Rol(id_rol)
 ) ENGINE=InnoDB;
 
 -- Magistrados; relación 1:1 con user_Seg.
 CREATE TABLE magistrado_Seg (
-    id_magistrado BIGINT NOT NULL AUTO_INCREMENT,
-    id_usuario BIGINT NOT NULL,
-    id_sala BIGINT NULL,
-    estatus BOOLEAN NOT NULL DEFAULT TRUE,
-    fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT pk_magistrado_Seg PRIMARY KEY (id_magistrado),
-    CONSTRAINT uq_magistrado_Seg_id_usuario UNIQUE (id_usuario),
-    CONSTRAINT fk_magistrado_Seg_id_usuario FOREIGN KEY (id_usuario) REFERENCES user_Seg(id_usuario) ON DELETE CASCADE,
-    CONSTRAINT fk_magistrado_Seg_id_sala FOREIGN KEY (id_sala) REFERENCES sala_Seg(id_sala)
+                                id_magistrado BIGINT NOT NULL AUTO_INCREMENT,
+                                id_usuario BIGINT NOT NULL,
+                                id_sala BIGINT NULL,
+                                estatus BOOLEAN NOT NULL DEFAULT TRUE,
+                                fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                CONSTRAINT pk_magistrado_Seg PRIMARY KEY (id_magistrado),
+                                CONSTRAINT uq_magistrado_Seg_id_usuario UNIQUE (id_usuario),
+                                CONSTRAINT fk_magistrado_Seg_id_usuario FOREIGN KEY (id_usuario) REFERENCES user_Seg(id_usuario) ON DELETE CASCADE,
+                                CONSTRAINT fk_magistrado_Seg_id_sala FOREIGN KEY (id_sala) REFERENCES sala_Seg(id_sala)
 ) ENGINE=InnoDB;
 
 -- Expedientes de Segunda Instancia. Expediente original y materia se obtienen de segunda_instancia_Ofc.
 CREATE TABLE toca_Seg (
-    id_toca BIGINT NOT NULL AUTO_INCREMENT,
-    numero_toca VARCHAR(40) NOT NULL,
-    id_segunda_instancia INT NOT NULL,
-    apelante VARCHAR(200) NULL,
-    id_sala BIGINT NOT NULL,
-    id_magistrado BIGINT NULL,
-    estado ENUM('Nueva','En ponencia','Resuelto') NOT NULL DEFAULT 'Nueva',
-    fecha_recepcion DATE NOT NULL,
-    fecha_actualizacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT pk_toca_Seg PRIMARY KEY (id_toca),
-    CONSTRAINT uq_toca_Seg_numero_toca UNIQUE (numero_toca),
-    CONSTRAINT uq_toca_Seg_id_segunda_instancia UNIQUE (id_segunda_instancia),
-    CONSTRAINT fk_toca_Seg_id_segunda_instancia FOREIGN KEY (id_segunda_instancia) REFERENCES segunda_instancia_Ofc(id_segunda_instancia),
-    CONSTRAINT fk_toca_Seg_id_sala FOREIGN KEY (id_sala) REFERENCES sala_Seg(id_sala),
-    CONSTRAINT fk_toca_Seg_id_magistrado FOREIGN KEY (id_magistrado) REFERENCES magistrado_Seg(id_magistrado)
+                          id_toca BIGINT NOT NULL AUTO_INCREMENT,
+                          numero_toca VARCHAR(40) NOT NULL,
+                          id_segunda_instancia INT NOT NULL,
+                          apelante VARCHAR(200) NULL,
+                          id_sala BIGINT NOT NULL,
+                          id_magistrado BIGINT NULL,
+                          estado ENUM('Nueva','En ponencia','Resuelto') NOT NULL DEFAULT 'Nueva',
+                          fecha_recepcion DATE NOT NULL,
+                          fecha_actualizacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                          CONSTRAINT pk_toca_Seg PRIMARY KEY (id_toca),
+                          CONSTRAINT uq_toca_Seg_numero_toca UNIQUE (numero_toca),
+                          CONSTRAINT uq_toca_Seg_id_segunda_instancia UNIQUE (id_segunda_instancia),
+                          CONSTRAINT fk_toca_Seg_id_segunda_instancia FOREIGN KEY (id_segunda_instancia) REFERENCES segunda_instancia_Ofc(id_segunda_instancia),
+                          CONSTRAINT fk_toca_Seg_id_sala FOREIGN KEY (id_sala) REFERENCES sala_Seg(id_sala),
+                          CONSTRAINT fk_toca_Seg_id_magistrado FOREIGN KEY (id_magistrado) REFERENCES magistrado_Seg(id_magistrado)
 ) ENGINE=InnoDB;
 
 -- Documentos adjuntos del toca.
 CREATE TABLE documento_Seg (
-    id_documento BIGINT NOT NULL AUTO_INCREMENT,
-    id_toca BIGINT NOT NULL,
-    titulo VARCHAR(200) NOT NULL,
-    tipo VARCHAR(50) NOT NULL,
-    paginas INT NULL,
-    fecha_carga TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    documento LONGBLOB NOT NULL,
-    CONSTRAINT pk_documento_Seg PRIMARY KEY (id_documento),
-    CONSTRAINT fk_documento_Seg_id_toca FOREIGN KEY (id_toca) REFERENCES toca_Seg(id_toca) ON DELETE CASCADE
+                               id_documento BIGINT NOT NULL AUTO_INCREMENT,
+                               id_toca BIGINT NOT NULL,
+                               titulo VARCHAR(200) NOT NULL,
+                               tipo VARCHAR(50) NOT NULL,
+                               paginas INT NULL,
+                               fecha_carga TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                               documento LONGBLOB NOT NULL,
+                               CONSTRAINT pk_documento_Seg PRIMARY KEY (id_documento),
+                               CONSTRAINT fk_documento_Seg_id_toca FOREIGN KEY (id_toca) REFERENCES toca_Seg(id_toca) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- Programación y sesiones de ponencia.
 CREATE TABLE ponencia_Seg (
-    id_ponencia BIGINT NOT NULL AUTO_INCREMENT,
-    id_toca BIGINT NOT NULL,
-    id_magistrado BIGINT NOT NULL,
-    fecha_sesion DATE NOT NULL,
-    hora_inicio TIME NOT NULL,
-    hora_fin TIME NOT NULL,
-    tipo_sesion VARCHAR(50) NULL,
-    fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT pk_ponencia_Seg PRIMARY KEY (id_ponencia),
-    CONSTRAINT fk_ponencia_Seg_id_toca FOREIGN KEY (id_toca) REFERENCES toca_Seg(id_toca) ON DELETE CASCADE,
-    CONSTRAINT fk_ponencia_Seg_id_magistrado FOREIGN KEY (id_magistrado) REFERENCES magistrado_Seg(id_magistrado)
+                              id_ponencia BIGINT NOT NULL AUTO_INCREMENT,
+                              id_toca BIGINT NOT NULL,
+                              id_magistrado BIGINT NOT NULL,
+                              fecha_sesion DATE NOT NULL,
+                              hora_inicio TIME NOT NULL,
+                              hora_fin TIME NOT NULL,
+                              tipo_sesion VARCHAR(50) NULL,
+                              fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                              CONSTRAINT pk_ponencia_Seg PRIMARY KEY (id_ponencia),
+                              CONSTRAINT fk_ponencia_Seg_id_toca FOREIGN KEY (id_toca) REFERENCES toca_Seg(id_toca) ON DELETE CASCADE,
+                              CONSTRAINT fk_ponencia_Seg_id_magistrado FOREIGN KEY (id_magistrado) REFERENCES magistrado_Seg(id_magistrado)
 ) ENGINE=InnoDB;
 
 -- Resoluciones de Segunda Instancia.
 CREATE TABLE resolucion_Seg (
-    id_resolucion BIGINT NOT NULL AUTO_INCREMENT,
-    id_toca BIGINT NOT NULL,
-    id_magistrado BIGINT NOT NULL,
-    sentido ENUM('Confirma','Revoca','Modifica') NOT NULL,
-    cuerpo LONGTEXT NULL,
-    observaciones LONGTEXT NULL,
-    url_pdf VARCHAR(500) NULL,
-    fecha_emision TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT pk_resolucion_Seg PRIMARY KEY (id_resolucion),
-    CONSTRAINT fk_resolucion_Seg_id_toca FOREIGN KEY (id_toca) REFERENCES toca_Seg(id_toca) ON DELETE CASCADE,
-    CONSTRAINT fk_resolucion_Seg_id_magistrado FOREIGN KEY (id_magistrado) REFERENCES magistrado_Seg(id_magistrado)
+                                id_resolucion BIGINT NOT NULL AUTO_INCREMENT,
+                                id_toca BIGINT NOT NULL,
+                                id_magistrado BIGINT NOT NULL,
+                                sentido ENUM('Confirma','Revoca','Modifica') NOT NULL,
+                                cuerpo LONGTEXT NULL,
+                                observaciones LONGTEXT NULL,
+                                url_pdf VARCHAR(500) NULL,
+                                fecha_emision TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                CONSTRAINT pk_resolucion_Seg PRIMARY KEY (id_resolucion),
+                                CONSTRAINT fk_resolucion_Seg_id_toca FOREIGN KEY (id_toca) REFERENCES toca_Seg(id_toca) ON DELETE CASCADE,
+                                CONSTRAINT fk_resolucion_Seg_id_magistrado FOREIGN KEY (id_magistrado) REFERENCES magistrado_Seg(id_magistrado)
 ) ENGINE=InnoDB;
 
 -- Solicitudes de reasignación de sala de un toca.
 CREATE TABLE reasignacion_Seg (
-    id_reasignacion BIGINT NOT NULL AUTO_INCREMENT,
-    id_toca BIGINT NOT NULL,
-    id_sala_origen BIGINT NOT NULL,
-    id_sala_destino BIGINT NULL,
-    motivo VARCHAR(300) NOT NULL,
-    estado ENUM('Requiere validación','Aprobada','Rechazada') NOT NULL DEFAULT 'Requiere validación',
-    solicitado_por BIGINT NULL,
-    fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT pk_reasignacion_Seg PRIMARY KEY (id_reasignacion),
-    CONSTRAINT fk_reasignacion_Seg_id_toca FOREIGN KEY (id_toca) REFERENCES toca_Seg(id_toca) ON DELETE CASCADE,
-    CONSTRAINT fk_reasignacion_Seg_id_sala_origen FOREIGN KEY (id_sala_origen) REFERENCES sala_Seg(id_sala),
-    CONSTRAINT fk_reasignacion_Seg_id_sala_destino FOREIGN KEY (id_sala_destino) REFERENCES sala_Seg(id_sala),
-    CONSTRAINT fk_reasignacion_Seg_solicitado_por FOREIGN KEY (solicitado_por) REFERENCES user_Seg(id_usuario)
+                                  id_reasignacion BIGINT NOT NULL AUTO_INCREMENT,
+                                  id_toca BIGINT NOT NULL,
+                                  id_sala_origen BIGINT NOT NULL,
+                                  id_sala_destino BIGINT NULL,
+                                  motivo VARCHAR(300) NOT NULL,
+                                  estado ENUM('Requiere validación','Aprobada','Rechazada') NOT NULL DEFAULT 'Requiere validación',
+                                  solicitado_por BIGINT NULL,
+                                  fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                  CONSTRAINT pk_reasignacion_Seg PRIMARY KEY (id_reasignacion),
+                                  CONSTRAINT fk_reasignacion_Seg_id_toca FOREIGN KEY (id_toca) REFERENCES toca_Seg(id_toca) ON DELETE CASCADE,
+                                  CONSTRAINT fk_reasignacion_Seg_id_sala_origen FOREIGN KEY (id_sala_origen) REFERENCES sala_Seg(id_sala),
+                                  CONSTRAINT fk_reasignacion_Seg_id_sala_destino FOREIGN KEY (id_sala_destino) REFERENCES sala_Seg(id_sala),
+                                  CONSTRAINT fk_reasignacion_Seg_solicitado_por FOREIGN KEY (solicitado_por) REFERENCES user_Seg(id_usuario)
 ) ENGINE=InnoDB;
 
 -- Trazabilidad de eventos de cada toca.
 CREATE TABLE historial_toca_Seg (
-    id_historial BIGINT NOT NULL AUTO_INCREMENT,
-    id_toca BIGINT NOT NULL,
-    descripcion VARCHAR(300) NOT NULL,
-    fecha_hora TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT pk_historial_toca_Seg PRIMARY KEY (id_historial),
-    CONSTRAINT fk_historial_toca_Seg_id_toca FOREIGN KEY (id_toca) REFERENCES toca_Seg(id_toca) ON DELETE CASCADE
+                                    id_historial BIGINT NOT NULL AUTO_INCREMENT,
+                                    id_toca BIGINT NOT NULL,
+                                    descripcion VARCHAR(300) NOT NULL,
+                                    fecha_hora TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                    CONSTRAINT pk_historial_toca_Seg PRIMARY KEY (id_historial),
+                                    CONSTRAINT fk_historial_toca_Seg_id_toca FOREIGN KEY (id_toca) REFERENCES toca_Seg(id_toca) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- Auditoría general de Segunda Instancia. Nombre y rol del actor se obtienen de user_Seg y Rol.
 CREATE TABLE bitacora_Seg (
-    id_bitacora BIGINT NOT NULL AUTO_INCREMENT,
-    fecha_hora TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    tipo_fuente VARCHAR(50) NOT NULL,
-    nombre_tabla VARCHAR(100) NULL,
-    id_registro BIGINT NULL,
-    accion VARCHAR(200) NOT NULL,
-    id_usuario BIGINT NULL,
-    valores_anteriores JSON NULL,
-    valores_nuevos JSON NULL,
-    detalle VARCHAR(500) NULL,
-    tono ENUM('green','gold','blue','crimson') NOT NULL DEFAULT 'blue',
-    CONSTRAINT pk_bitacora_Seg PRIMARY KEY (id_bitacora),
-    CONSTRAINT fk_bitacora_Seg_id_usuario FOREIGN KEY (id_usuario) REFERENCES user_Seg(id_usuario) ON DELETE SET NULL
+                              id_bitacora BIGINT NOT NULL AUTO_INCREMENT,
+                              fecha_hora TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                              tipo_fuente VARCHAR(50) NOT NULL,
+                              nombre_tabla VARCHAR(100) NULL,
+                              id_registro BIGINT NULL,
+                              accion VARCHAR(200) NOT NULL,
+                              id_usuario BIGINT NULL,
+                              valores_anteriores JSON NULL,
+                              valores_nuevos JSON NULL,
+                              detalle VARCHAR(500) NULL,
+                              tono ENUM('green','gold','blue','crimson') NOT NULL DEFAULT 'blue',
+                              CONSTRAINT pk_bitacora_Seg PRIMARY KEY (id_bitacora),
+                              CONSTRAINT fk_bitacora_Seg_id_usuario FOREIGN KEY (id_usuario) REFERENCES user_Seg(id_usuario) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- Solicitudes de copias certificadas de un expediente. El solicitante es un usuario de Oficialía.
 CREATE TABLE solicitud_copia_Cop (
-    id_solicitud INT NOT NULL AUTO_INCREMENT,
-    folio_solicitud VARCHAR(50) NOT NULL,
-    num_expediente VARCHAR(20) NOT NULL,
-    id_usuario_solicitante INT NOT NULL,
-    fecha_solicitud DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    estado_solicitud ENUM('REGISTRADA','EN_REVISION','APROBADA','RECHAZADA','PAGADA') NOT NULL,
-    CONSTRAINT pk_solicitud_copia_Cop PRIMARY KEY (id_solicitud),
-    CONSTRAINT uq_solicitud_copia_Cop_folio_solicitud UNIQUE (folio_solicitud),
-    CONSTRAINT fk_solicitud_copia_Cop_num_expediente FOREIGN KEY (num_expediente) REFERENCES expediente_Ofc(num_expediente),
-    CONSTRAINT fk_solicitud_copia_Cop_id_usuario_solicitante FOREIGN KEY (id_usuario_solicitante) REFERENCES user_Ofc(id_usuario)
+                                     id_solicitud INT NOT NULL AUTO_INCREMENT,
+                                     folio_solicitud VARCHAR(50) NOT NULL,
+                                     num_expediente VARCHAR(20) NOT NULL,
+                                     id_usuario_solicitante INT NOT NULL,
+                                     fecha_solicitud DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                     estado_solicitud ENUM('REGISTRADA','EN_REVISION','APROBADA','RECHAZADA','PAGADA') NOT NULL,
+                                     CONSTRAINT pk_solicitud_copia_Cop PRIMARY KEY (id_solicitud),
+                                     CONSTRAINT uq_solicitud_copia_Cop_folio_solicitud UNIQUE (folio_solicitud),
+                                     CONSTRAINT fk_solicitud_copia_Cop_num_expediente FOREIGN KEY (num_expediente) REFERENCES expediente_Ofc(num_expediente),
+                                     CONSTRAINT fk_solicitud_copia_Cop_id_usuario_solicitante FOREIGN KEY (id_usuario_solicitante) REFERENCES user_Ofc(id_usuario)
 ) ENGINE=InnoDB;
 
 -- Dictamen de un funcionario sobre una solicitud de copia.
 CREATE TABLE revision_solicitud_Cop (
-    id_revision INT NOT NULL AUTO_INCREMENT,
-    id_solicitud INT NOT NULL,
-    id_usuario_revisor INT NOT NULL,
-    fecha_revision DATETIME NOT NULL,
-    resultado ENUM('APROBADA','RECHAZADA') NOT NULL,
-    motivo_rechazo TEXT NULL,
-    CONSTRAINT pk_revision_solicitud_Cop PRIMARY KEY (id_revision),
-    CONSTRAINT ck_revision_motivo CHECK (resultado <> 'RECHAZADA' OR motivo_rechazo IS NOT NULL),
-    CONSTRAINT fk_revision_solicitud_Cop_id_solicitud FOREIGN KEY (id_solicitud) REFERENCES solicitud_copia_Cop(id_solicitud),
-    CONSTRAINT fk_revision_solicitud_Cop_id_usuario_revisor FOREIGN KEY (id_usuario_revisor) REFERENCES user_Ofc(id_usuario)
+                                        id_revision INT NOT NULL AUTO_INCREMENT,
+                                        id_solicitud INT NOT NULL,
+                                        id_usuario_revisor INT NOT NULL,
+                                        fecha_revision DATETIME NOT NULL,
+                                        resultado ENUM('APROBADA','RECHAZADA') NOT NULL,
+                                        motivo_rechazo TEXT NULL,
+                                        CONSTRAINT pk_revision_solicitud_Cop PRIMARY KEY (id_revision),
+                                        CONSTRAINT ck_revision_motivo CHECK (resultado <> 'RECHAZADA' OR motivo_rechazo IS NOT NULL),
+                                        CONSTRAINT fk_revision_solicitud_Cop_id_solicitud FOREIGN KEY (id_solicitud) REFERENCES solicitud_copia_Cop(id_solicitud),
+                                        CONSTRAINT fk_revision_solicitud_Cop_id_usuario_revisor FOREIGN KEY (id_usuario_revisor) REFERENCES user_Ofc(id_usuario)
 ) ENGINE=InnoDB;
 
 -- Pagos de las solicitudes de copia.
 CREATE TABLE pago_Cop (
-    id_pago INT NOT NULL AUTO_INCREMENT,
-    folio_pago VARCHAR(50) NULL,
-    id_solicitud INT NOT NULL,
-    id_usuario_pago INT NULL,
-    monto DECIMAL(10,2) NOT NULL,
-    fecha_pago DATETIME NULL,
-    estado_pago ENUM('CONFIRMADO','FALLIDO') NOT NULL,
-    CONSTRAINT pk_pago_Cop PRIMARY KEY (id_pago),
-    CONSTRAINT uq_pago_Cop_folio_pago UNIQUE (folio_pago),
-    CONSTRAINT ck_pago_Cop_monto CHECK (monto > 0),
-    CONSTRAINT fk_pago_Cop_id_solicitud FOREIGN KEY (id_solicitud) REFERENCES solicitud_copia_Cop(id_solicitud),
-    CONSTRAINT fk_pago_Cop_id_usuario_pago FOREIGN KEY (id_usuario_pago) REFERENCES user_Ofc(id_usuario)
+                          id_pago INT NOT NULL AUTO_INCREMENT,
+                          folio_pago VARCHAR(50) NULL,
+                          id_solicitud INT NOT NULL,
+                          id_usuario_pago INT NULL,
+                          monto DECIMAL(10,2) NOT NULL,
+                          fecha_pago DATETIME NULL,
+                          estado_pago ENUM('CONFIRMADO','FALLIDO') NOT NULL,
+                          CONSTRAINT pk_pago_Cop PRIMARY KEY (id_pago),
+                          CONSTRAINT uq_pago_Cop_folio_pago UNIQUE (folio_pago),
+                          CONSTRAINT ck_pago_Cop_monto CHECK (monto > 0),
+                          CONSTRAINT fk_pago_Cop_id_solicitud FOREIGN KEY (id_solicitud) REFERENCES solicitud_copia_Cop(id_solicitud),
+                          CONSTRAINT fk_pago_Cop_id_usuario_pago FOREIGN KEY (id_usuario_pago) REFERENCES user_Ofc(id_usuario)
 ) ENGINE=InnoDB;
 
 -- ==========================================================
--- Triggers: mantienen Login sincronizado con cada tabla user_*.
+-- Triggers que mantienen Login sincronizado con cada tabla user_*.
+-- Escritos sin BEGIN...END para que NO necesiten DELIMITER (algunos editores,
+-- como esta versión de Workbench, no lo procesan y marcan error 1064).
 --  * AFTER INSERT: copia correo y contraseña a Login. Si el correo ya existe
 --    en Login (en cualquier módulo), el INSERT del usuario se rechaza completo.
 --  * AFTER UPDATE: si cambia el correo o la contraseña, actualiza Login
 --    (busca por el correo anterior). Si el nuevo correo ya existe en Login,
 --    el UPDATE del usuario se rechaza completo.
 -- ==========================================================
-DELIMITER $$
-CREATE TRIGGER trg_user_Ofc_login_ai AFTER INSERT ON user_Ofc
-FOR EACH ROW
-BEGIN
-    INSERT INTO Login (correo, contrasena) VALUES (NEW.correo, NEW.contrasena);
-END$$
 
--- CORRECCIÓN: trigger nuevo para mantener Login sincronizado.
+DROP TRIGGER IF EXISTS trg_user_Ofc_login_ai;
+DROP TRIGGER IF EXISTS trg_user_Ofc_login_au;
+DROP TRIGGER IF EXISTS trg_user_Aud_login_ai;
+DROP TRIGGER IF EXISTS trg_user_Aud_login_au;
+DROP TRIGGER IF EXISTS trg_user_Per_login_ai;
+DROP TRIGGER IF EXISTS trg_user_Per_login_au;
+DROP TRIGGER IF EXISTS trg_user_Seg_login_ai;
+DROP TRIGGER IF EXISTS trg_user_Seg_login_au;
+
+CREATE TRIGGER trg_user_Ofc_login_ai AFTER INSERT ON user_Ofc
+    FOR EACH ROW
+    INSERT INTO Login (correo, contrasena) VALUES (NEW.correo, NEW.contrasena);
+
 CREATE TRIGGER trg_user_Ofc_login_au AFTER UPDATE ON user_Ofc
-FOR EACH ROW
-BEGIN
-    IF NEW.correo <> OLD.correo OR NEW.contrasena <> OLD.contrasena THEN
-        UPDATE Login SET correo = NEW.correo, contrasena = NEW.contrasena
-        WHERE correo = OLD.correo;
-    END IF;
-END$$
+    FOR EACH ROW
+    UPDATE Login SET correo = NEW.correo, contrasena = NEW.contrasena
+    WHERE correo = OLD.correo
+      AND (NEW.correo <> OLD.correo OR NEW.contrasena <> OLD.contrasena);
 
 CREATE TRIGGER trg_user_Aud_login_ai AFTER INSERT ON user_Aud
-FOR EACH ROW
-BEGIN
+    FOR EACH ROW
     INSERT INTO Login (correo, contrasena) VALUES (NEW.correo, NEW.contrasena);
-END$$
 
--- CORRECCIÓN: trigger nuevo para mantener Login sincronizado.
 CREATE TRIGGER trg_user_Aud_login_au AFTER UPDATE ON user_Aud
-FOR EACH ROW
-BEGIN
-    IF NEW.correo <> OLD.correo OR NEW.contrasena <> OLD.contrasena THEN
-        UPDATE Login SET correo = NEW.correo, contrasena = NEW.contrasena
-        WHERE correo = OLD.correo;
-    END IF;
-END$$
-
-CREATE TRIGGER trg_user_Per_login_ai AFTER INSERT ON user_Per
-FOR EACH ROW
-BEGIN
-    INSERT INTO Login (correo, contrasena) VALUES (NEW.correo, NEW.contrasena);
-END$$
+    FOR EACH ROW
+    UPDATE Login SET correo = NEW.correo, contrasena = NEW.contrasena
+    WHERE correo = OLD.correo
+      AND (NEW.correo <> OLD.correo OR NEW.contrasena <> OLD.contrasena);
 
 -- CAMBIO PERITAJES: al cambiar la contraseña de un usuario de Peritajes (RF 1.2) también se cambia en Login.
--- CORRECCIÓN: busca por OLD.correo y también actualiza el correo.
+CREATE TRIGGER trg_user_Per_login_ai AFTER INSERT ON user_Per
+    FOR EACH ROW
+    INSERT INTO Login (correo, contrasena) VALUES (NEW.correo, NEW.contrasena);
+
 CREATE TRIGGER trg_user_Per_login_au AFTER UPDATE ON user_Per
-FOR EACH ROW
-BEGIN
-    IF NEW.correo <> OLD.correo OR NEW.contrasena <> OLD.contrasena THEN
-        UPDATE Login SET correo = NEW.correo, contrasena = NEW.contrasena
-        WHERE correo = OLD.correo;
-    END IF;
-END$$
+    FOR EACH ROW
+    UPDATE Login SET correo = NEW.correo, contrasena = NEW.contrasena
+    WHERE correo = OLD.correo
+      AND (NEW.correo <> OLD.correo OR NEW.contrasena <> OLD.contrasena);
 
 CREATE TRIGGER trg_user_Seg_login_ai AFTER INSERT ON user_Seg
-FOR EACH ROW
-BEGIN
+    FOR EACH ROW
     INSERT INTO Login (correo, contrasena) VALUES (NEW.correo, NEW.contrasena);
-END$$
 
--- CORRECCIÓN: trigger nuevo para mantener Login sincronizado.
 CREATE TRIGGER trg_user_Seg_login_au AFTER UPDATE ON user_Seg
-FOR EACH ROW
-BEGIN
-    IF NEW.correo <> OLD.correo OR NEW.contrasena <> OLD.contrasena THEN
-        UPDATE Login SET correo = NEW.correo, contrasena = NEW.contrasena
-        WHERE correo = OLD.correo;
-    END IF;
-END$$
+    FOR EACH ROW
+    UPDATE Login SET correo = NEW.correo, contrasena = NEW.contrasena
+    WHERE correo = OLD.correo
+      AND (NEW.correo <> OLD.correo OR NEW.contrasena <> OLD.contrasena);
 
-DELIMITER ;
+-- ==========================================================
+-- Triggers AFTER DELETE de Login — complemento de triggers_login.sql (base VERSIÓN 4)
+--
+-- Qué hacen: cuando se BORRA un usuario de user_Ofc, user_Aud, user_Per o user_Seg,
+-- también se borra su renglón de Login (se busca por el correo del usuario borrado).
+-- Sin estos triggers el correo se quedaba en Login: no se podía volver a registrar
+-- (error 1062, llave duplicada) y quedaba un acceso huérfano.
+--
+-- La baja lógica (Status = FALSE) NO necesita trigger: el núcleo (AccesoDao) revisa
+-- Status en la tabla user_* al iniciar sesión y en cada petición.
+--
+-- Se puede correr varias veces (DROP TRIGGER IF EXISTS).
+-- No usa DELIMITER: cada trigger es una sola instrucción, sin BEGIN...END,
+-- para que corra en MySQL Workbench, DBeaver o la consola.
+-- Creados y probados en la base de Aiven el 25/11/2026.
+-- ==========================================================
+
+USE sistema_judicial;
+
+DROP TRIGGER IF EXISTS trg_user_Ofc_login_ad;
+DROP TRIGGER IF EXISTS trg_user_Aud_login_ad;
+DROP TRIGGER IF EXISTS trg_user_Per_login_ad;
+DROP TRIGGER IF EXISTS trg_user_Seg_login_ad;
+
+CREATE TRIGGER trg_user_Ofc_login_ad AFTER DELETE ON user_Ofc
+    FOR EACH ROW
+    DELETE FROM Login WHERE correo = OLD.correo;
+
+CREATE TRIGGER trg_user_Aud_login_ad AFTER DELETE ON user_Aud
+    FOR EACH ROW
+    DELETE FROM Login WHERE correo = OLD.correo;
+
+CREATE TRIGGER trg_user_Per_login_ad AFTER DELETE ON user_Per
+    FOR EACH ROW
+    DELETE FROM Login WHERE correo = OLD.correo;
+
+CREATE TRIGGER trg_user_Seg_login_ad AFTER DELETE ON user_Seg
+    FOR EACH ROW
+    DELETE FROM Login WHERE correo = OLD.correo;
+
+-- Para revisar que quedaron (deben salir 12 triggers: INSERT, UPDATE y DELETE de cada tabla user_*):
+-- SELECT event_object_table, action_timing, event_manipulation, trigger_name
+-- FROM information_schema.triggers WHERE trigger_schema = 'sistema_judicial' ORDER BY 1, 3;
+
+-- ==========================================================
+-- Copias Certificadas (Cop): tarifa congelada, datos del solicitante y entrega
+-- Base: sistema_judicial VERSIÓN 4. Aplicado en la base de Aiven el 25/11/2026.
+--
+-- Cambios respecto al script original del equipo:
+--  * tarifa_Cop se crea ANTES del ALTER, porque solicitud_copia_Cop.id_tarifa ahora la referencia.
+--  * Se agregaron 3 llaves foráneas:
+--      tarifa_Cop.id_usuario                  -> user_Ofc (quién registró la tarifa)
+--      solicitud_copia_Cop.id_tarifa          -> tarifa_Cop (tarifa aplicada)
+--      solicitud_copia_Cop.id_usuario_entrega -> user_Ofc (trabajador que entregó)
+--    Los usuarios de Copias viven en user_Ofc.
+--
+-- IMPORTANTE: el ALTER agrega columnas NOT NULL (nombre, RFC, correo, id_tarifa, costo) y CHECK
+-- sobre el RFC y el costo. Solo funciona si solicitud_copia_Cop está VACÍA (lo estaba al aplicarlo).
+-- Con datos, MySQL las llenaría con '' y 0 y los CHECK harían fallar el ALTER (error 3819).
+-- El ALTER es atómico: si falla, no se aplica nada de él.
+-- tarifa_Cop y la tarifa inicial se pueden correr varias veces. El ALTER solo una vez.
+-- ==========================================================
+
+USE sistema_judicial;
+
+-- ---------- Tarifas (precio de la copia certificada) ----------
+CREATE TABLE IF NOT EXISTS tarifa_Cop (
+                                          id_tarifa     INT NOT NULL AUTO_INCREMENT,
+                                          monto         DECIMAL(10,2) NOT NULL,
+    vigente_desde DATE NOT NULL,
+    id_usuario    INT NULL,                          -- quién la registró
+    CONSTRAINT pk_tarifa_Cop PRIMARY KEY (id_tarifa),
+    CONSTRAINT ck_tarifa_Cop_monto CHECK (monto > 0),
+    CONSTRAINT fk_tarifa_Cop_id_usuario FOREIGN KEY (id_usuario) REFERENCES user_Ofc(id_usuario)
+    ) ENGINE=InnoDB;
+
+-- Tarifa inicial (solo si todavía no existe una con esa fecha)
+INSERT INTO tarifa_Cop (monto, vigente_desde)
+SELECT 320.00, '2026-01-01' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM tarifa_Cop WHERE vigente_desde = '2026-01-01');
+
+-- ---------- Solicitud de copia: solicitante, tarifa congelada y entrega ----------
+ALTER TABLE solicitud_copia_Cop
+    ADD solicitante_nombre VARCHAR(150) NOT NULL,
+    ADD solicitante_rfc    VARCHAR(13)  NOT NULL,
+    ADD solicitante_correo VARCHAR(150) NOT NULL,
+    ADD solicitante_ine    MEDIUMBLOB   NULL,        -- solo expedientes privados. PDF/JPG/PNG hasta 5 MB
+    ADD id_tarifa          INT          NOT NULL,    -- tarifa aplicada
+    ADD costo              DECIMAL(10,2) NOT NULL,   -- precio congelado al registrar
+    ADD id_usuario_entrega INT          NULL,        -- trabajador que entregó
+    ADD fecha_entrega      DATETIME     NULL,        -- cuándo se entregó
+    MODIFY estado_solicitud ENUM('REGISTRADA','EN_REVISION','APROBADA','RECHAZADA','PAGADA',
+                                 'LISTA_PARA_RECOGER','ENTREGADA') NOT NULL,
+    ADD CONSTRAINT ck_solicitud_copia_Cop_rfc   CHECK (CHAR_LENGTH(solicitante_rfc) IN (12, 13)),
+    ADD CONSTRAINT ck_solicitud_copia_Cop_costo CHECK (costo > 0),
+    ADD CONSTRAINT ck_solicitud_copia_Cop_entrega
+        CHECK (estado_solicitud <> 'ENTREGADA' OR (id_usuario_entrega IS NOT NULL AND fecha_entrega IS NOT NULL)),
+    ADD CONSTRAINT fk_solicitud_copia_Cop_id_tarifa
+        FOREIGN KEY (id_tarifa) REFERENCES tarifa_Cop(id_tarifa),
+    ADD CONSTRAINT fk_solicitud_copia_Cop_id_usuario_entrega
+        FOREIGN KEY (id_usuario_entrega) REFERENCES user_Ofc(id_usuario);
+
+-- ---------- Revisión ----------
+-- DESCRIBE solicitud_copia_Cop;
+-- SELECT * FROM tarifa_Cop;
+
+-- ==========================================================
+-- Audiencias (Aud): campos nuevos en user_Aud, mesa_audiencia_Aud, audiencia_Aud
+-- y participante_audiencia_Aud.
+-- Base: sistema_judicial VERSIÓN 4. Aplicado en la base de Aiven el 26/11/2026.
+--
+-- Cambio respecto a lo que se pidió:
+--  * user_Aud.clave_materia es INT, no VARCHAR(10). En la versión 4 materia_Ofc tiene como llave
+--    id_materia INT, y una FK de VARCHAR a INT da error 3780. Es la misma regla de la versión 4 para
+--    mesa_audiencia_Aud.clave_materia y solicitud_perito_Aud.clave_materia: el nombre se conserva,
+--    pero guarda el id numérico de la materia.
+--
+-- Notas:
+--  * Los valores nuevos de los ENUM se agregan AL FINAL, así los existentes no cambian.
+--  * audiencia_Aud.id_abogado_audiencia es NOT NULL: este ALTER solo funciona si audiencia_Aud está
+--    VACÍA (lo estaba al aplicarlo). Con datos, MySQL pondría 0 y la FK fallaría.
+--  * Cada ALTER es atómico: si uno falla, no se aplica nada de ese ALTER.
+--  * Este archivo se corre UNA sola vez (los ALTER ... ADD fallan si las columnas ya existen).
+-- ==========================================================
+
+USE sistema_judicial;
+
+-- ---------- user_Aud ----------
+ALTER TABLE user_Aud
+    ADD telefono      VARCHAR(10) NULL,
+    ADD clave_materia INT         NULL,     -- id de materia_Ofc (VERSIÓN 4)
+    ADD CONSTRAINT fk_user_Aud_clave_materia
+        FOREIGN KEY (clave_materia) REFERENCES materia_Ofc(id_materia);
+
+-- ---------- mesa_audiencia_Aud ----------
+ALTER TABLE mesa_audiencia_Aud
+    ADD estado ENUM('ACTIVO','INACTIVO') NOT NULL DEFAULT 'ACTIVO';
+
+-- ---------- audiencia_Aud ----------
+ALTER TABLE audiencia_Aud
+    ADD id_abogado_audiencia   INT      NOT NULL,   -- abogado que atiende la audiencia
+    ADD fecha_hora_inicio_real DATETIME NULL,       -- momento real de inicio
+    ADD fecha_hora_fin_real    DATETIME NULL,       -- momento real de conclusión
+    ADD acta_audiencia         LONGTEXT NULL,       -- contenido del acta redactada
+    ADD motivo_reprogramacion  TEXT     NULL,       -- motivo del cambio de fecha
+    ADD id_audiencia_anterior  INT      NULL,       -- audiencia que se reprogramó
+    MODIFY estado_audiencia ENUM('PROGRAMADA','SUSPENDIDA_POR_INASISTENCIA','CELEBRADA','REPROGRAMADA',
+                                 'EN_PROCESO') NOT NULL DEFAULT 'PROGRAMADA',
+    ADD CONSTRAINT fk_audiencia_Aud_id_abogado_audiencia
+        FOREIGN KEY (id_abogado_audiencia) REFERENCES user_Aud(id_usuario),
+    ADD CONSTRAINT fk_audiencia_Aud_id_audiencia_anterior
+        FOREIGN KEY (id_audiencia_anterior) REFERENCES audiencia_Aud(id_audiencia);
+
+-- ---------- participante_audiencia_Aud ----------
+ALTER TABLE participante_audiencia_Aud
+    ADD motivo_ausencia VARCHAR(500) NULL,                  -- motivo de la inasistencia
+    ADD es_obligatorio  BOOLEAN      NOT NULL DEFAULT TRUE, -- su presencia es indispensable
+    MODIFY rol_participante ENUM('DEMANDANTE','DEMANDADO','REP_LEGAL','PERITO',
+                                 'TESTIGO','OTRO') NOT NULL;
+
+-- ---------- Revisión ----------
+-- DESCRIBE user_Aud;
+-- DESCRIBE mesa_audiencia_Aud;
+-- DESCRIBE audiencia_Aud;
+-- DESCRIBE participante_audiencia_Aud;

@@ -33,7 +33,7 @@ public class PeritoDao {
     private static final String SELECT = "SELECT u.id_usuario, u.nombre, u.apellido_paterno, u.apellido_materno,"
             + " u.correo, u.Status, r.rol,"
             + " (SELECT GROUP_CONCAT(mt.nombre ORDER BY mt.nombre SEPARATOR ' · ') FROM perito_materia_Per pm"
-            + "    JOIN materia_Ofc mt ON mt.clave_materia = pm.clave_materia WHERE pm.id_usuario = u.id_usuario) AS materias,"
+            + "    JOIN materia_Ofc mt ON mt.id_materia = pm.clave_materia WHERE pm.id_usuario = u.id_usuario) AS materias,"
             + " " + PeritajeDao.CARGA_ASIGNADOS + " AS asignados,"
             + " " + PeritajeDao.CARGA_EN_PROCESO + " AS en_proceso"
             + " FROM user_Per u JOIN Rol r ON r.id_rol = u.id_rol"
@@ -133,7 +133,7 @@ public class PeritoDao {
                 ps.setLong(1, id);
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
-                        perito.getMaterias().add(rs.getString(1));
+                        perito.getMaterias().add(rs.getLong(1));
                     }
                 }
             }
@@ -234,7 +234,7 @@ public class PeritoDao {
     // Catálogo (RF 3.2). Cada filtro es opcional (null o vacío = no filtra). La página empieza en 0.
     // texto busca en el nombre completo y en el número de registro (PER-0005).
     // Si piden un tamaño de página que no está en TAMANOS_PAGINA, se usa el de 25.
-    public Pagina<Perito> buscar(String texto, String especialidad, String claveMateria, Boolean activo,
+    public Pagina<Perito> buscar(String texto, String especialidad, Long materiaId, Boolean activo,
                                  int pagina, int tamano) {
         StringBuilder where = new StringBuilder();
         List<Object> parametros = new ArrayList<>();
@@ -250,10 +250,10 @@ public class PeritoDao {
                     + " WHERE e.id_usuario = u.id_usuario AND e.descripcion_especialidad = ?)");
             parametros.add(especialidad.trim());
         }
-        if (claveMateria != null && !claveMateria.isBlank()) {
+        if (materiaId != null) {
             where.append(" AND EXISTS (SELECT 1 FROM perito_materia_Per pm2"
                     + " WHERE pm2.id_usuario = u.id_usuario AND pm2.clave_materia = ?)");
-            parametros.add(claveMateria);
+            parametros.add(materiaId);
         }
         if (activo != null) {
             where.append(" AND u.Status = ?");
@@ -323,9 +323,9 @@ public class PeritoDao {
     // RF 3.2: total de peritos por materia, por ejemplo {Civil=3, Familiar=2, ...}
     public Map<String, Long> totalesPorMateria() {
         String sql = "SELECT mt.nombre, COUNT(u.id_usuario) FROM materia_Ofc mt"
-                + " LEFT JOIN perito_materia_Per pm ON pm.clave_materia = mt.clave_materia"
+                + " LEFT JOIN perito_materia_Per pm ON pm.clave_materia = mt.id_materia"
                 + " LEFT JOIN user_Per u ON u.id_usuario = pm.id_usuario"
-                + " WHERE mt.estado = 'ACTIVO' GROUP BY mt.clave_materia, mt.nombre ORDER BY mt.nombre";
+                + " WHERE mt.estado = 'ACTIVO' GROUP BY mt.id_materia, mt.nombre ORDER BY mt.nombre";
         Map<String, Long> totales = new LinkedHashMap<>();
         try (Connection con = ConexionBD.obtener();
              PreparedStatement ps = con.prepareStatement(sql);
@@ -379,18 +379,18 @@ public class PeritoDao {
         }
         try (PreparedStatement ps = con.prepareStatement(
                 "INSERT INTO perito_materia_Per (id_usuario, clave_materia) VALUES (?, ?)")) {
-            for (String clave : perito.getMaterias()) {
+            for (Long materiaId : perito.getMaterias()) {
                 ps.setLong(1, perito.getId());
-                ps.setString(2, clave);
+                ps.setLong(2, materiaId);
                 ps.executeUpdate();
             }
         }
     }
 
-    // "Civil · Familiar" a partir de las claves
-    private String nombresMaterias(Set<String> claves) {
+    // "Civil · Familiar" a partir de los ids
+    private String nombresMaterias(Set<Long> ids) {
         return materiaDao.listarActivas().stream()
-                .filter(m -> claves.contains(m.getClave()))
+                .filter(m -> ids.contains(m.getId()))
                 .map(m -> m.getNombre())
                 .collect(Collectors.joining(" · "));
     }

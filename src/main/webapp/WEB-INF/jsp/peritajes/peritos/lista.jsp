@@ -56,7 +56,7 @@
                 <select class="form-select" name="materia" aria-label="Materia" data-autoenvio>
                     <option value="">Materia: Todas</option>
                     <c:forEach var="m" items="${materias}">
-                        <option value="<c:out value='${m.clave}'/>"${m.clave eq materia ? ' selected' : ''}><c:out value="${m.nombre}"/></option>
+                        <option value="<c:out value='${m.id}'/>"${m.id eq materia ? ' selected' : ''}><c:out value="${m.nombre}"/></option>
                     </c:forEach>
                 </select>
             </div>

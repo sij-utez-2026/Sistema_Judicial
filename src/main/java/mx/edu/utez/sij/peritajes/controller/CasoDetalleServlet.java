@@ -39,7 +39,7 @@ public class CasoDetalleServlet extends HttpServlet {
         request.setAttribute("historial", historialDao.listarPorPeritaje(peritaje.getId()));
         // Para la ventana de reasignación: elegibles sin el perito actual (RF 2.3)
         request.setAttribute("puedeReasignar", peritaje.getEstado().isActivo());
-        request.setAttribute("candidatos", dao.candidatos(peritaje.getClaveMateria(), peritaje.getPeritoId()));
+        request.setAttribute("candidatos", dao.candidatos(peritaje.getMateriaId(), peritaje.getPeritoId()));
         Vistas.mostrar(request, response, "peritajes/casos/detalle");
     }
 }

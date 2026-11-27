@@ -41,6 +41,7 @@ public class PeritajeDao {
             "(SELECT MAX(a2.id_asignacion) FROM asignacion_Per a2 WHERE a2.id_peritaje = p.id_peritaje)";
 
     // Carga activa del perito u (peritajes.md 6.1): Asignado + En Proceso. La usan PeritajeDao y PeritoDao.
+    // Se guarda en user_Per.carga_trabajo con actualizarCarga(...) cada vez que cambia.
     static final String CARGA_ACTIVA = carga("'Asignado', 'En Proceso'");
     static final String CARGA_ASIGNADOS = carga("'Asignado'");
     static final String CARGA_EN_PROCESO = carga("'En Proceso'");
@@ -49,10 +50,10 @@ public class PeritajeDao {
     private static final String DESDE = " FROM peritaje_Per p"
             + " JOIN solicitud_perito_Aud s ON s.id_solicitud_perito = p.id_solicitud_perito"
             + " JOIN demanda_Ofc d ON d.folio = s.folio"
-            + " JOIN materia_Ofc m ON m.clave_materia = s.clave_materia"
+            + " JOIN materia_Ofc m ON m.id_materia = s.clave_materia"
             + " LEFT JOIN expediente_Ofc e ON e.folio = d.folio"
-            + " LEFT JOIN oficialia_Ofc o ON o.clave_oficialia = d.clave_oficialia"
-            + " LEFT JOIN juzgado_Ofc j ON j.clave_juzgado = o.clave_juzgado"
+            + " LEFT JOIN oficialia_Ofc o ON o.id_oficialia = d.id_oficialia"
+            + " LEFT JOIN juzgado_Ofc j ON j.id_juzgado = o.id_juzgado"
             + " LEFT JOIN asignacion_Per a ON a.id_asignacion = " + ASIGNACION_VIGENTE
             + " LEFT JOIN user_Per u ON u.id_usuario = a.id_perito_asignado";
 
@@ -111,8 +112,8 @@ public class PeritajeDao {
     // ===================== Administradores: Solicitudes y peritajes =====================
 
     // Lista de casos con filtros opcionales (null = no filtra): folio, demanda o expediente; materia; estado; perito.
-    public Pagina<Peritaje> buscar(String texto, String claveMateria, EstadoPeritaje estado, Long peritoId, int pagina) {
-        return buscar(texto, claveMateria, estado == null ? null : EnumSet.of(estado), peritoId, pagina);
+    public Pagina<Peritaje> buscar(String texto, Long materiaId, EstadoPeritaje estado, Long peritoId, int pagina) {
+        return buscar(texto, materiaId, estado == null ? null : EnumSet.of(estado), peritoId, pagina);
     }
 
     // Cuántos peritajes hay en cada estado (pestañas de la lista y tarjetas del inicio).
@@ -216,24 +217,25 @@ public class PeritajeDao {
 
     // ===================== Solicitud y asignación (DFR 3.3.4) =====================
 
-    // Peritos elegibles: activos, con rol de perito y con la materia. De menor a mayor carga activa.
+    // Peritos elegibles: activos, con rol de perito y con la materia. De menor a mayor carga de trabajo
+    // (columna user_Per.carga_trabajo = Asignado + En Proceso).
     // excluirPeritoId: el perito actual, en la reasignación (null = no excluye).
-    public List<CandidatoAsignacion> candidatos(String claveMateria, Long excluirPeritoId) {
+    public List<CandidatoAsignacion> candidatos(Long materiaId, Long excluirPeritoId) {
         String sql = "SELECT u.id_usuario, CONCAT_WS(' ', u.nombre, u.apellido_paterno, u.apellido_materno) AS nombre,"
                 + " (SELECT GROUP_CONCAT(mt.nombre ORDER BY mt.nombre SEPARATOR ' · ') FROM perito_materia_Per pm2"
-                + "    JOIN materia_Ofc mt ON mt.clave_materia = pm2.clave_materia WHERE pm2.id_usuario = u.id_usuario) AS materias,"
-                + " " + CARGA_ACTIVA + " AS carga"
+                + "    JOIN materia_Ofc mt ON mt.id_materia = pm2.clave_materia WHERE pm2.id_usuario = u.id_usuario) AS materias,"
+                + " u.carga_trabajo AS carga"
                 + " FROM user_Per u JOIN Rol r ON r.id_rol = u.id_rol"
                 + " WHERE u.Status = TRUE AND r.rol IN (?, ?)"
                 + " AND EXISTS (SELECT 1 FROM perito_materia_Per pm WHERE pm.id_usuario = u.id_usuario AND pm.clave_materia = ?)"
                 + " AND (? IS NULL OR u.id_usuario <> ?)"
-                + " ORDER BY carga, nombre";
+                + " ORDER BY u.carga_trabajo, nombre";
         List<CandidatoAsignacion> candidatos = new ArrayList<>();
         try (Connection con = ConexionBD.obtener();
              PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, UsuarioPeritajes.PERITO);
             ps.setString(2, UsuarioPeritajes.PERITO_ADMIN);
-            ps.setString(3, claveMateria);
+            ps.setObject(3, materiaId);
             ps.setObject(4, excluirPeritoId);
             ps.setObject(5, excluirPeritoId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -287,7 +289,7 @@ public class PeritajeDao {
             return "Seleccione un perito distinto al que tiene asignado el peritaje";
         }
         // DFR 2.3: el nuevo perito debe estar activo y tener la materia
-        CandidatoAsignacion nuevo = candidatos(peritaje.getClaveMateria(), peritaje.getPeritoId()).stream()
+        CandidatoAsignacion nuevo = candidatos(peritaje.getMateriaId(), peritaje.getPeritoId()).stream()
                 .filter(c -> c.getPeritoId().equals(nuevoPeritoId))
                 .findFirst().orElse(null);
         if (nuevo == null) {
@@ -308,6 +310,9 @@ public class PeritajeDao {
                     ps.setObject(6, LocalDateTime.now(ZONA));
                     ps.executeUpdate();
                 }
+                // El peritaje sigue activo: le suma al perito nuevo y le resta al anterior
+                actualizarCarga(con, nuevoPeritoId);
+                actualizarCarga(con, peritaje.getPeritoId());
                 // RF 2.3 y 5.2: administrador, fecha y hora, perito saliente y entrante, y el motivo
                 bitacoraDao.registrar(con, usuario, BitacoraDao.REASIGNACION_MANUAL, peritaje.getFolio(),
                         peritaje.getPeritoNombreTexto() + " → " + nuevo.getNombre() + ". Estado conservado: "
@@ -338,12 +343,27 @@ public class PeritajeDao {
                 Integer.MAX_VALUE).getContent();
     }
 
+    // Guarda en user_Per.carga_trabajo la carga activa del perito (Asignado + En Proceso), contada de los
+    // peritajes. Se llama dentro de la misma transacción después de cada cambio que la mueve: asignación
+    // automática, reasignación (perito nuevo y anterior) y entrega del dictamen. Se recalcula en vez de
+    // sumar o restar 1, para que la columna nunca se desfase. peritoId null = no hace nada.
+    static void actualizarCarga(Connection con, Long peritoId) throws SQLException {
+        if (peritoId == null) {
+            return;
+        }
+        String sql = "UPDATE user_Per u SET u.carga_trabajo = " + CARGA_ACTIVA + " WHERE u.id_usuario = ?";
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setLong(1, peritoId);
+            ps.executeUpdate();
+        }
+    }
+
     // ===================== Privados =====================
 
     // Solicitudes de Audiencias que todavía no tienen peritaje (con su demanda y materia para la bitácora)
     private List<Peritaje> solicitudesSinPeritaje() {
         String sql = "SELECT s.id_solicitud_perito, s.folio, m.nombre AS materia FROM solicitud_perito_Aud s"
-                + " JOIN materia_Ofc m ON m.clave_materia = s.clave_materia"
+                + " JOIN materia_Ofc m ON m.id_materia = s.clave_materia"
                 + " WHERE NOT EXISTS (SELECT 1 FROM peritaje_Per p WHERE p.id_solicitud_perito = s.id_solicitud_perito)"
                 + " ORDER BY s.id_solicitud_perito";
         List<Peritaje> solicitudes = new ArrayList<>();
@@ -401,7 +421,7 @@ public class PeritajeDao {
     // El peritaje pasa a Asignado, queda en asignacion_Per (sin usuario = automática), en la bitácora
     // y se avisa al perito (RF 5.1).
     private void asignarAutomaticamente(Peritaje peritaje) {
-        List<CandidatoAsignacion> candidatos = candidatos(peritaje.getClaveMateria(), null);
+        List<CandidatoAsignacion> candidatos = candidatos(peritaje.getMateriaId(), null);
         if (candidatos.isEmpty()) {
             return;   // sin peritos de la materia: se queda pendiente
         }
@@ -430,6 +450,7 @@ public class PeritajeDao {
                     ps.setObject(3, LocalDateTime.now(ZONA));
                     ps.executeUpdate();
                 }
+                actualizarCarga(con, elegido.getPeritoId());
                 // RF 2.2: la asignación se registra en la bitácora (perito, fecha y resultado)
                 bitacoraDao.registrar(con, UsuarioPeritajes.SISTEMA, BitacoraDao.ASIGNACION_AUTOMATICA,
                         peritaje.getFolio(), elegido.getNombre() + ": activo; materia " + peritaje.getMateria()
@@ -449,13 +470,13 @@ public class PeritajeDao {
         }
     }
 
-    private Pagina<Peritaje> buscar(String texto, String claveMateria, Collection<EstadoPeritaje> estados,
+    private Pagina<Peritaje> buscar(String texto, Long materiaId, Collection<EstadoPeritaje> estados,
                                     Long peritoId, int pagina) {
-        return buscar(texto, claveMateria, estados, peritoId, pagina, TAMANO_PAGINA);
+        return buscar(texto, materiaId, estados, peritoId, pagina, TAMANO_PAGINA);
     }
 
     // Cada filtro es opcional (null = no filtra). La página empieza en 0. Del más reciente al más antiguo.
-    private Pagina<Peritaje> buscar(String texto, String claveMateria, Collection<EstadoPeritaje> estados,
+    private Pagina<Peritaje> buscar(String texto, Long materiaId, Collection<EstadoPeritaje> estados,
                                     Long peritoId, int pagina, int tamano) {
         StringBuilder where = new StringBuilder(" WHERE 1 = 1");
         List<Object> parametros = new ArrayList<>();
@@ -466,9 +487,9 @@ public class PeritajeDao {
             parametros.add("%" + t + "%");
             parametros.add("%" + t + "%");
         }
-        if (claveMateria != null && !claveMateria.isBlank()) {
-            where.append(" AND s.clave_materia = ?");
-            parametros.add(claveMateria);
+        if (materiaId != null) {
+            where.append(" AND s.clave_materia = ?");   // guarda el id_materia
+            parametros.add(materiaId);
         }
         if (estados != null && !estados.isEmpty()) {
             where.append(" AND p.estado_peritaje IN (");
@@ -522,7 +543,7 @@ public class PeritajeDao {
         p.setFechaEntrega(Jdbc.fecha(rs, "fecha_entrega"));
         p.setFechaCancelacion(Jdbc.fecha(rs, "fecha_cancelacion"));
         p.setFolioDemanda(rs.getString("folio"));
-        p.setClaveMateria(rs.getString("clave_materia"));
+        p.setMateriaId(Jdbc.largo(rs, "clave_materia"));
         p.setMateria(rs.getString("materia"));
         p.setDescripcionDemanda(rs.getString("descripcion"));
         p.setNumeroExpediente(rs.getString("num_expediente"));
