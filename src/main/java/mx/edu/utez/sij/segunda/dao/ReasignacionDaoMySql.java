@@ -8,8 +8,8 @@ import java.sql.*;
 public class ReasignacionDaoMySql {
 
     /**
-     * Cambia de inmediato la sala y el magistrado de la toca, y deja el registro
-     * en reasignacion_seg usando el esquema actual (sin estado ni solicitante).
+     * Cambia de inmediato la sala y el magistrado de la toca, y marca como aprobada
+     * la solicitud en reasignacion_Seg usando columnas del esquema actual.
      */
     public ResultadoReasignacion reasignar(Long tocaId, Long salaDestinoId, String motivo) {
         if (tocaId == null || salaDestinoId == null
@@ -47,8 +47,8 @@ public class ReasignacionDaoMySql {
 
                 long reasignacionId;
                 try (PreparedStatement ps = con.prepareStatement(
-                        "INSERT INTO reasignacion_seg (id_toca, id_sala_origen, id_sala_destino, motivo) "
-                                + "VALUES (?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)) {
+                        "INSERT INTO reasignacion_Seg (id_toca, id_sala_origen, id_sala_destino, motivo, estado) "
+                                + "VALUES (?, ?, ?, ?, 'Aprobada')", Statement.RETURN_GENERATED_KEYS)) {
                     ps.setLong(1, tocaId);
                     ps.setLong(2, salaOrigenId);
                     ps.setLong(3, salaDestinoId);

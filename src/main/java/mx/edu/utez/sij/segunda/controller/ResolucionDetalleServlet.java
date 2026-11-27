@@ -46,8 +46,9 @@ public class ResolucionDetalleServlet extends HttpServlet {
         }
 
         UsuarioSesion usuario = Segunda.usuarioActual(request);
-        if (SegundaPermisos.esMagistrado(usuario)
-                && !usuario.getId().equals(toca.get().getMagistradoUsuarioId())) {
+        if (!SegundaPermisos.esUsuarioSegunda(usuario)
+                || (SegundaPermisos.esMagistrado(usuario)
+                && !usuario.getId().equals(toca.get().getMagistradoUsuarioId()))) {
             Vistas.noEncontrado(response);
             return;
         }

@@ -6,7 +6,6 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import mx.edu.utez.sij.nucleo.web.Vistas;
-import mx.edu.utez.sij.segunda.Segunda;
 
 import java.io.IOException;
 
@@ -16,7 +15,7 @@ public class InicioServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        Segunda.usuarioActual(request);
+        if (!SegundaPermisos.requiereAcceso(request, response)) return;
         Vistas.mostrar(request, response, "segunda/inicio");
     }
 }

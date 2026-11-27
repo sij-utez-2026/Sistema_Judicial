@@ -19,6 +19,16 @@ public final class SegundaPermisos {
         return usuario != null && "SEGUNDA_MAGISTRADO".equals(usuario.getRol());
     }
 
+    public static boolean esUsuarioSegunda(UsuarioSesion usuario) {
+        return esAdmin(usuario) || esMagistrado(usuario);
+    }
+
+    public static boolean requiereAcceso(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        if (esUsuarioSegunda(Segunda.usuarioActual(request))) return true;
+        response.sendError(HttpServletResponse.SC_FORBIDDEN, "Operación exclusiva de Segunda Instancia");
+        return false;
+    }
+
     public static boolean requiereAdmin(HttpServletRequest request, HttpServletResponse response) throws IOException {
         if (esAdmin(Segunda.usuarioActual(request))) return true;
         response.sendError(HttpServletResponse.SC_FORBIDDEN,

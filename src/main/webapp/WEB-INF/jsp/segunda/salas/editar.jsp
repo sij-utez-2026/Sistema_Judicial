@@ -7,6 +7,9 @@
     <jsp:attribute name="estilos">
         <link rel="stylesheet" href="<c:url value='/recursos/segunda/css/pantallas.css'/>">
     </jsp:attribute>
+    <jsp:attribute name="scripts">
+        <script src="<c:url value='/recursos/segunda/js/salas.js?v=1'/>"></script>
+    </jsp:attribute>
     <jsp:body>
         <div class="sin-pantalla sin-vista-salas-editar">
     <n:migas><a href="<c:url value='/segunda/salas'/>">Salas</a> / Editar sala</n:migas>

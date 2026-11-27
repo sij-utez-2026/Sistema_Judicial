@@ -35,6 +35,10 @@ public class TocaListarServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         UsuarioSesion usuario = Segunda.usuarioActual(request);
+        if (!SegundaPermisos.esUsuarioSegunda(usuario)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
 
         String q = Parametros.texto(request, "q");
         String estadoTexto = Parametros.texto(request, "estado");
@@ -68,5 +72,4 @@ public class TocaListarServlet extends HttpServlet {
         Vistas.mostrar(request, response, "segunda/tocas/lista");
     }
 }
-
 

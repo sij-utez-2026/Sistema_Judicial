@@ -30,6 +30,11 @@ public class TocaHistorialServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        UsuarioSesion usuario = Segunda.usuarioActual(request);
+        if (!SegundaPermisos.esUsuarioSegunda(usuario)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
         Long id = Parametros.numero(request, "id");
         if (id == null) {
             Vistas.noEncontrado(response);
@@ -41,7 +46,6 @@ public class TocaHistorialServlet extends HttpServlet {
             return;
         }
 
-        UsuarioSesion usuario = Segunda.usuarioActual(request);
         if (SegundaPermisos.esMagistrado(usuario)
                 && !usuario.getId().equals(toca.get().getMagistradoUsuarioId())) {
             Vistas.noEncontrado(response);
@@ -55,5 +59,4 @@ public class TocaHistorialServlet extends HttpServlet {
         Vistas.mostrar(request, response, "segunda/tocas/historial");
     }
 }
-
 

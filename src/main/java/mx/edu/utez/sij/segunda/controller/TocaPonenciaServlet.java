@@ -48,9 +48,10 @@ public class TocaPonenciaServlet extends HttpServlet {
 
         // Verificar que el magistrado sea dueño de la toca (o admin)
         UsuarioSesion usuario = Segunda.usuarioActual(request);
-        if (SegundaPermisos.esMagistrado(usuario)
-                && !usuario.getId().equals(toca.get().getMagistradoUsuarioId())) {
-            Vistas.noEncontrado(response);
+        if (!SegundaPermisos.esAdmin(usuario)
+                && (!SegundaPermisos.esMagistrado(usuario)
+                || !usuario.getId().equals(toca.get().getMagistradoUsuarioId()))) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
             return;
         }
 
@@ -69,6 +70,8 @@ public class TocaPonenciaServlet extends HttpServlet {
             LocalDateTime fechaHora = LocalDateTime.of(fecha, hora);
 
             Ponencia p = ponenciaService.registrar(tocaId, fechaHora);
+            Segunda.registrarBitacora(request, usuario, "ponencia_Seg", p.getId(), "Ponencia registrada",
+                    "Toca " + toca.get().getFolioToca() + " · fecha " + fechaHora, "blue");
             FlashMessage.exito(request, "Ponencia registrada",
                     "Programada para el " + p.getFechaTexto() + " a las " + p.getHoraTexto() + ".");
         } catch (java.time.format.DateTimeParseException e) {
@@ -80,4 +83,3 @@ public class TocaPonenciaServlet extends HttpServlet {
         Vistas.redirigir(request, response, "/segunda/tocas/detalle?id=" + tocaId);
     }
 }
-

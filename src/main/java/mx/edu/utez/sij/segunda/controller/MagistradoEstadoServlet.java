@@ -37,6 +37,9 @@ public class MagistradoEstadoServlet extends HttpServlet {
 
         try {
             Magistrado m = magistradoService.cambiarEstado(id, Parametros.booleano(request, "activo"));
+            Segunda.registrarBitacora(request, Segunda.usuarioActual(request), "magistrado_Seg", m.getId(),
+                    m.isActivo() ? "Magistrado reactivado" : "Magistrado dado de baja",
+                    m.getNombreCompleto() + " · activo=" + m.isActivo(), m.isActivo() ? "green" : "gold");
             FlashMessage.exito(request,
                     m.isActivo() ? "Magistrado reactivado" : "Magistrado dado de baja",
                     m.getNombreCompleto() + (m.isActivo()
@@ -48,4 +51,3 @@ public class MagistradoEstadoServlet extends HttpServlet {
         Vistas.redirigir(request, response, "/segunda/magistrados/editar?id=" + id);
     }
 }
-

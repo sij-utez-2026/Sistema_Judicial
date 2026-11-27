@@ -63,8 +63,8 @@ public class ReasignarTocaServlet extends HttpServlet {
             ReasignacionResultado resultado = ejecutarReasignacion(tocaId, salaId, motivo);
             Segunda.tocaService().registrarHistorial(resultado.tocaId(), "Reasignación administrativa",
                     "Sala " + resultado.salaOrigenId() + " → sala " + resultado.salaDestinoId());
-            Segunda.bitacoraDao().registrar("SEGUNDA", "reasignacion_seg", resultado.reasignacionId(),
-                    "Reasignación administrativa ejecutada", usuario.getId(),
+            Segunda.registrarBitacora(request, usuario, "reasignacion_Seg", resultado.reasignacionId(),
+                    "Reasignación administrativa ejecutada",
                     "Toca " + resultado.tocaId() + "; sala origen " + resultado.salaOrigenId()
                             + "; sala destino " + resultado.salaDestinoId()
                             + "; motivo: " + motivo.trim(), "gold");

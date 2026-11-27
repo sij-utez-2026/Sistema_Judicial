@@ -128,9 +128,9 @@ public class UsuarioServiceTemporalSegunda {
         }
     }
 
-    /** La vigencia de acceso se controla en magistrado_Seg.estatus. */
-    public void desactivar(Long usuarioId) { }
-    public void reactivar(Long usuarioId) { }
+    /** Bloquea también el acceso central de la cuenta, sin borrar el usuario ni tocar otras tablas. */
+    public void desactivar(Long usuarioId) { cambiarEstadoCuenta(usuarioId, false); }
+    public void reactivar(Long usuarioId) { cambiarEstadoCuenta(usuarioId, true); }
 
     public Optional<UsuarioTemporal> buscar(Long id) {
         if (id == null) return Optional.empty();
@@ -146,7 +146,21 @@ public class UsuarioServiceTemporalSegunda {
         }
     }
 
-    public List<UsuarioTemporal> listar() { return List.of(); }
+    public List<UsuarioTemporal> listar() {
+        String sql = "SELECT u.id_usuario,u.nombre,u.apellido_paterno,u.apellido_materno,u.correo,"
+                + "u.Status,r.rol,u.fecha_creacion FROM user_Seg u JOIN Rol r ON r.id_rol=u.id_rol "
+                + "WHERE r.rol=? ORDER BY u.apellido_paterno,u.apellido_materno,u.nombre,u.id_usuario";
+        try (Connection c = ConexionBD.obtener(); PreparedStatement p = c.prepareStatement(sql)) {
+            p.setString(1, ROL_MAGISTRADO);
+            try (ResultSet rs = p.executeQuery()) {
+                java.util.ArrayList<UsuarioTemporal> usuarios = new java.util.ArrayList<>();
+                while (rs.next()) usuarios.add(mapear(rs, false));
+                return List.copyOf(usuarios);
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("No se pudieron listar las cuentas de magistrado", e);
+        }
+    }
 
     public boolean existeCorreo(String correo) {
         if (correo == null) return false;
@@ -156,6 +170,31 @@ public class UsuarioServiceTemporalSegunda {
             try (ResultSet rs = p.executeQuery()) { return rs.next(); }
         } catch (SQLException e) {
             throw new IllegalStateException("No se pudo verificar el correo", e);
+        }
+    }
+
+    private void cambiarEstadoCuenta(Long usuarioId, boolean activo) {
+        if (usuarioId == null) throw new IllegalArgumentException("El identificador de usuario es obligatorio");
+        String update = "UPDATE user_Seg SET Status=? WHERE id_usuario=? "
+                + "AND id_rol=(SELECT id_rol FROM Rol WHERE rol=? LIMIT 1)";
+        try (Connection c = ConexionBD.obtener(); PreparedStatement p = c.prepareStatement(update)) {
+            p.setBoolean(1, activo);
+            p.setLong(2, usuarioId);
+            p.setString(3, ROL_MAGISTRADO);
+            int actualizados = p.executeUpdate();
+            if (actualizados == 0) {
+                try (PreparedStatement existe = c.prepareStatement(
+                        "SELECT 1 FROM user_Seg u JOIN Rol r ON r.id_rol=u.id_rol "
+                                + "WHERE u.id_usuario=? AND r.rol=?")) {
+                    existe.setLong(1, usuarioId);
+                    existe.setString(2, ROL_MAGISTRADO);
+                    try (ResultSet rs = existe.executeQuery()) {
+                        if (!rs.next()) throw new ReglaNegocioException("La cuenta del magistrado no existe");
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("No se pudo actualizar el estado de la cuenta del magistrado", e);
         }
     }
 

@@ -9,6 +9,8 @@ import mx.edu.utez.sij.nucleo.web.Parametros;
 import mx.edu.utez.sij.nucleo.web.Vistas;
 import mx.edu.utez.sij.segunda.Segunda;
 import mx.edu.utez.sij.nucleo.acceso.UsuarioSesion;
+import mx.edu.utez.sij.nucleo.web.Pagina;
+import mx.edu.utez.sij.segunda.dto.BitacoraItemDto;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -31,10 +33,15 @@ public class BitacoraListarServlet extends HttpServlet {
         int page = Math.max(0, Parametros.entero(request, "page", 0));
         int size = Parametros.entero(request, "size", 25);
         if (!SIZES.contains(size)) size = 25;
+        boolean filtrosValidos = request.getAttribute("error") == null;
         if (desde != null && hasta != null && desde.isAfter(hasta)) {
             request.setAttribute("error", "La fecha inicial no puede ser posterior a la fecha final.");
+            filtrosValidos = false;
         }
-        request.setAttribute("pagina", Segunda.bitacoraDao().buscar(q, accion, desde, hasta, page, size));
+        Pagina<BitacoraItemDto> resultados = filtrosValidos
+                ? Segunda.bitacoraDao().buscar(q, accion, desde, hasta, page, size)
+                : new Pagina<>(List.of(), page, size, 0);
+        request.setAttribute("pagina", resultados);
         request.setAttribute("acciones", Segunda.bitacoraDao().acciones());
         request.setAttribute("tamanosPagina", SIZES);
         request.setAttribute("q", q); request.setAttribute("accion", accion);

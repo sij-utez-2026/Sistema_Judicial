@@ -48,6 +48,8 @@ public class SalaRegistrarServlet extends HttpServlet {
         if (errores.isEmpty()) {
             try {
                 Sala sala = salaService.registrar(form);
+                Segunda.registrarBitacora(request, Segunda.usuarioActual(request), "sala_Seg", sala.getId(),
+                        "Sala registrada", sala.getNombre() + " · distrito " + sala.getDistritoId(), "green");
                 FlashMessage.exito(request, "Registro exitoso",
                         sala.getNombre() + " quedó registrada como activa.");
                 Vistas.redirigir(request, response, "/segunda/salas");
