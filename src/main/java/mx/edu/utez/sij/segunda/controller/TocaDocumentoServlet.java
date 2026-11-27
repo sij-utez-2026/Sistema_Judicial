@@ -27,7 +27,8 @@ public class TocaDocumentoServlet extends HttpServlet {
         }
         Optional<Toca> toca = Segunda.tocaService().buscar(tocaId);
         UsuarioSesion usuario = Segunda.usuarioActual(request);
-        if (toca.isEmpty() || (SegundaPermisos.esMagistrado(usuario)
+        if (toca.isEmpty() || !SegundaPermisos.esUsuarioSegunda(usuario)
+                || (SegundaPermisos.esMagistrado(usuario)
                 && !usuario.getId().equals(toca.get().getMagistradoUsuarioId()))) {
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
             return;

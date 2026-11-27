@@ -1,6 +1,7 @@
 package mx.edu.utez.sij.segunda.dao;
 
 import mx.edu.utez.sij.nucleo.bd.ConexionBD;
+import mx.edu.utez.sij.nucleo.acceso.UsuarioSesion;
 import mx.edu.utez.sij.nucleo.web.Pagina;
 import mx.edu.utez.sij.segunda.dto.BitacoraItemDto;
 
@@ -33,6 +34,31 @@ public class BitacoraDaoMySql {
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new IllegalStateException("Error JDBC al registrar evento en bitacora_Seg", e);
+        }
+    }
+
+    /** Registra el actor real sin asumir que IDs de otros módulos pertenecen a user_Seg. */
+    public void registrar(String tipoFuente, String tabla, Long registroId, String accion,
+                          UsuarioSesion actor, String detalle, String tono) {
+        Long usuarioSegId = null;
+        String detalleConActor = detalle;
+        if (actor != null && "user_Seg".equalsIgnoreCase(actor.getTabla()) && actor.getId() != null
+                && existeUsuarioSeg(actor.getId())) {
+            usuarioSegId = actor.getId();
+        } else if (actor != null) {
+            detalleConActor = "Actor: " + actor.getNombre() + " (" + actor.getRol() + "). "
+                    + (detalle == null ? "" : detalle);
+        }
+        registrar(tipoFuente, tabla, registroId, accion, usuarioSegId, detalleConActor, tono);
+    }
+
+    private boolean existeUsuarioSeg(Long id) {
+        try (Connection con = ConexionBD.obtener(); PreparedStatement ps = con.prepareStatement(
+                "SELECT 1 FROM user_Seg WHERE id_usuario=?")) {
+            ps.setLong(1, id);
+            try (ResultSet rs = ps.executeQuery()) { return rs.next(); }
+        } catch (SQLException e) {
+            throw new IllegalStateException("No se pudo validar el actor de bitacora_Seg", e);
         }
     }
 
@@ -97,10 +123,17 @@ public class BitacoraDaoMySql {
         long usuarioId = rs.getLong("id_usuario"); Long usuario = rs.wasNull() ? null : usuarioId;
         long registroId = rs.getLong("id_registro"); Long registro = rs.wasNull() ? null : registroId;
         Timestamp fecha = rs.getTimestamp("fecha_hora");
+        String usuarioNombre = rs.getString("usuario_nombre");
+        String detalle = rs.getString("detalle");
+        if ((usuarioNombre == null || usuarioNombre.isBlank())
+                && detalle != null && detalle.startsWith("Actor: ")) {
+            int finNombre = detalle.indexOf(" (", 7);
+            if (finNombre > 7) usuarioNombre = detalle.substring(7, finNombre);
+        }
         return new BitacoraItemDto(rs.getLong("id_bitacora"), fecha == null ? null : fecha.toLocalDateTime(),
                 rs.getString("tipo_fuente"), rs.getString("nombre_tabla"), registro, rs.getString("accion"),
-                usuario, rs.getString("usuario_nombre"), rs.getString("valores_anteriores"),
-                rs.getString("valores_nuevos"), rs.getString("detalle"), rs.getString("tono"));
+                usuario, usuarioNombre, rs.getString("valores_anteriores"),
+                rs.getString("valores_nuevos"), detalle, rs.getString("tono"));
     }
 
     private String limitar(String value, int max) {

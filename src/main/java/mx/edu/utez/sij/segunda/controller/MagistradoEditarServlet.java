@@ -58,7 +58,9 @@ public class MagistradoEditarServlet extends HttpServlet {
         Map<String, String> errores = Validador.validar(form);
         if (errores.isEmpty()) {
             try {
-                magistradoService.actualizar(m.get().getId(), form);
+                Magistrado actualizado = magistradoService.actualizar(m.get().getId(), form);
+                Segunda.registrarBitacora(request, Segunda.usuarioActual(request), "magistrado_Seg", actualizado.getId(),
+                        "Datos de magistrado actualizados", actualizado.getNombreCompleto(), "blue");
                 FlashMessage.exito(request, "Datos actualizados", "La cuenta del magistrado fue actualizada.");
                 Vistas.redirigir(request, response, "/segunda/magistrados/editar?id=" + m.get().getId());
                 return;

@@ -17,6 +17,7 @@ public class TocaCancelarAcuerdoServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws IOException {
+        if (!SegundaPermisos.requiereAdmin(request, response)) return;
         response.sendError(HttpServletResponse.SC_CONFLICT,
                 "El esquema actual de Segunda Instancia no permite cancelar una toca por acuerdo.");
     }

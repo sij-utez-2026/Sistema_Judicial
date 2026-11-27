@@ -22,7 +22,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
     if (oculto.value.trim()) {
-        quill.root.innerHTML = oculto.value;
+        // Quill convierte el HTML en Delta desde un documento aislado; no insertarlo
+        // como innerHTML en el documento activo, ya que puede disparar atributos/eventos.
+        quill.setContents(quill.clipboard.convert({ html: oculto.value }));
     }
 
     form.addEventListener('submit', function (evento) {
@@ -38,4 +40,3 @@ document.addEventListener('DOMContentLoaded', function () {
         oculto.value = quill.root.innerHTML;
     });
 });
-

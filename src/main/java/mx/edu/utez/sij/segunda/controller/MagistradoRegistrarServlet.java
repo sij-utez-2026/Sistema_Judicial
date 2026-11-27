@@ -50,6 +50,8 @@ public class MagistradoRegistrarServlet extends HttpServlet {
         if (errores.isEmpty()) {
             try {
                 Magistrado m = magistradoService.registrar(form);
+                Segunda.registrarBitacora(request, Segunda.usuarioActual(request), "magistrado_Seg", m.getId(),
+                        "Magistrado registrado", m.getNombreCompleto() + " · usuario " + m.getUsuarioId(), "green");
                 FlashMessage.exito(request, "Registro exitoso",
                         m.getNombreCompleto() + " quedó registrado como magistrado"
                                 + (m.isSinSala() ? " (sin sala asignada)."

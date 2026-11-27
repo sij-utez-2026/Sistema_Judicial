@@ -50,8 +50,8 @@ public class RecibirTocaServlet extends HttpServlet {
                     origen.getNumeroExpediente(), origen.getMateriaId(), origen.getJuzgadoOrigenId(),
                     origen.getDistritoId(), origen.getSalaId());
             UsuarioSesion usuario = Segunda.usuarioActual(request);
-            Segunda.bitacoraDao().registrar("SEGUNDA", "toca_Seg", toca.getId(), "Recepción de toca",
-                    usuario.getId(), "Expediente " + origen.getNumeroExpediente() + " · sala " + origen.getSalaNombre(), "green");
+            Segunda.registrarBitacora(request, usuario, "toca_Seg", toca.getId(), "Recepción de toca",
+                    "Expediente " + origen.getNumeroExpediente() + " · sala " + origen.getSalaNombre(), "green");
             FlashMessage.exito(request, "Recepción registrada",
                     "La toca " + toca.getFolioToca() + " quedó recibida y asignada al magistrado de la sala.");
             Vistas.redirigir(request, response, "/segunda/tocas");

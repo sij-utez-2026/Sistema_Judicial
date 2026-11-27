@@ -18,11 +18,8 @@ public class SegundaPerfilServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        if (!SegundaPermisos.requiereAcceso(request, response)) return;
         UsuarioSesion usuario = Segunda.usuarioActual(request);
-        if (usuario == null) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN);
-            return;
-        }
         boolean magistrado = SegundaPermisos.esMagistrado(usuario);
         PerfilSegundaDto perfil = new PerfilSegundaDto(
                 usuario.getNombre(), usuario.getCorreo(),

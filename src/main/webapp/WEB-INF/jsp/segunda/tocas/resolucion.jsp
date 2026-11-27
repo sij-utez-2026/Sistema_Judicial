@@ -55,7 +55,7 @@
           </div>
           <div class="col-12">
             <div class="sij-aviso sij-aviso-informacion p-3">
-              Al registrar la resolución, el sistema generará automáticamente el PDF a partir de este texto y lo guardará como documento de la toca.
+              Al registrar la resolución, el sistema genera un PDF a partir del texto y lo guarda como documento de la toca. El esquema actual no soporta versiones ni anulación.
             </div>
           </div>
         </div>

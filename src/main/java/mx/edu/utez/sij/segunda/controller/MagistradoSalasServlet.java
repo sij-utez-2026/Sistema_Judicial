@@ -38,6 +38,8 @@ public class MagistradoSalasServlet extends HttpServlet {
 
         try {
             Magistrado m = magistradoService.asignarSala(id, salaId);
+            Segunda.registrarBitacora(request, Segunda.usuarioActual(request), "magistrado_Seg", m.getId(),
+                    "Sala asignada a magistrado", m.getNombreCompleto() + " · sala " + m.getSalaId(), "blue");
             FlashMessage.exito(request, "Sala asignada",
                     m.getNombreCompleto() + " quedó en la " + m.getSalaNombre() + ".");
         } catch (ReglaNegocioException e) {
@@ -46,4 +48,3 @@ public class MagistradoSalasServlet extends HttpServlet {
         Vistas.redirigir(request, response, "/segunda/magistrados/editar?id=" + id);
     }
 }
-

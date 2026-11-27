@@ -37,6 +37,9 @@ public class SalaEstadoServlet extends HttpServlet {
 
         try {
             Sala sala = salaService.cambiarEstado(id, Parametros.booleano(request, "activa"));
+            Segunda.registrarBitacora(request, Segunda.usuarioActual(request), "sala_Seg", sala.getId(),
+                    sala.isActiva() ? "Sala reactivada" : "Sala desactivada",
+                    sala.getNombre() + " · activa=" + sala.isActiva(), sala.isActiva() ? "green" : "gold");
             FlashMessage.exito(request,
                     sala.isActiva() ? "Sala reactivada" : "Sala desactivada",
                     sala.getNombre() + (sala.isActiva()
@@ -48,4 +51,3 @@ public class SalaEstadoServlet extends HttpServlet {
         Vistas.redirigir(request, response, "/segunda/salas/editar?id=" + id);
     }
 }
-

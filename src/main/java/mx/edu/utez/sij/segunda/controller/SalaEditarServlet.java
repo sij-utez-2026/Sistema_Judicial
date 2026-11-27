@@ -60,6 +60,8 @@ public class SalaEditarServlet extends HttpServlet {
         if (errores.isEmpty()) {
             try {
                 Sala actualizada = salaService.actualizar(sala.get().getId(), form);
+                Segunda.registrarBitacora(request, Segunda.usuarioActual(request), "sala_Seg", actualizada.getId(),
+                        "Sala actualizada", actualizada.getNombre() + " · distrito " + actualizada.getDistritoId(), "blue");
                 FlashMessage.exito(request, "Datos actualizados correctamente",
                         actualizada.getNombre() + " · "
                                 + (actualizada.isActiva() ? "Activa." : "Inactiva."));
@@ -87,4 +89,3 @@ public class SalaEditarServlet extends HttpServlet {
         Vistas.mostrar(request, response, "segunda/salas/editar");
     }
 }
-

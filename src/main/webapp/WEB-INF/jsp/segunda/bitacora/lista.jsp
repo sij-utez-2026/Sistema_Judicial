@@ -34,6 +34,7 @@
       <form class="d-flex align-items-center gap-2" method="get" action="<c:url value='/segunda/bitacora'/>">
         <input type="hidden" name="q" value="<c:out value='${q}'/>"><input type="hidden" name="accion" value="<c:out value='${accion}'/>"><input type="hidden" name="desde" value="<c:out value='${desde}'/>"><input type="hidden" name="hasta" value="<c:out value='${hasta}'/>">
         <label for="size" class="sij-texto-chico">Registros por página</label><select id="size" name="size" class="form-select form-select-sm w-auto"><c:forEach var="tam" items="${tamanosPagina}"><option value="<c:out value='${tam}'/>"${tam eq size ? ' selected' : ''}><c:out value="${tam}"/></option></c:forEach></select>
+        <button type="submit" class="btn btn-sm btn-sij-secundario">Aplicar</button>
       </form><div class="flex-grow-1"><n:paginacion pagina="${pagina}" url="/segunda/bitacora"/></div>
     </div></c:if>
     <p class="sij-texto-chico mt-3">La pantalla es de solo lectura. El esquema no incluye IP ni sesión de usuario en bitacora_Seg.</p>

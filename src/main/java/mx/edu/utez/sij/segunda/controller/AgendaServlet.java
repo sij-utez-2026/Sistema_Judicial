@@ -29,9 +29,13 @@ public class AgendaServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         UsuarioSesion usuario = Segunda.usuarioActual(request);
+        if (!SegundaPermisos.esUsuarioSegunda(usuario)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
 
         String vista = Parametros.texto(request, "vista");
-        if (vista == null) vista = "semanal";
+        if (!"mensual".equals(vista)) vista = "semanal";
 
         LocalDate fecha;
         try {
@@ -92,5 +96,3 @@ public class AgendaServlet extends HttpServlet {
         Vistas.mostrar(request, response, "segunda/agenda/lista");
     }
 }
-
-

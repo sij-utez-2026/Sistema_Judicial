@@ -17,8 +17,8 @@ import java.io.IOException;
 import java.util.Optional;
 
 /**
- * Registra una nueva versión simulada del PDF; ArchivoService aún no forma parte del módulo.
- * La operación conserva la anterior y exige motivo (RF 7.3).
+ * Conserva la ruta de compatibilidad, pero no modifica la resolución porque el esquema vigente
+ * no tiene almacenamiento de versiones; el servicio responde con un error funcional explícito.
  * URL: POST /segunda/resoluciones/actualizar con id y motivo.
  */
 @WebServlet("/segunda/resoluciones/actualizar")

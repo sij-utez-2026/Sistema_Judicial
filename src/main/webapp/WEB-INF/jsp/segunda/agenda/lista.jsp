@@ -27,7 +27,7 @@
 
     <div class="col-lg-4 col-md-6 d-flex align-items-center gap-2 sin-agenda-navegacion">
       <a class="btn btn-sij-secundario"
-         href="<c:url value='/segunda/agenda?vista=${vista}&fecha=${fechaAnterior}'/>"
+         href="<c:url value='/segunda/agenda?vista=${vista}&fecha=${fechaAnterior}&salaId=${salaId}&magistradoId=${magistradoId}'/>"
          aria-label="Rango anterior">&larr;</a>
       <span class="sij-texto-chico text-nowrap fw-semibold sin-agenda-rango">
                 <c:choose>
@@ -40,16 +40,16 @@
                 </c:choose>
             </span>
       <a class="btn btn-sij-secundario"
-         href="<c:url value='/segunda/agenda?vista=${vista}&fecha=${fechaSiguiente}'/>"
+         href="<c:url value='/segunda/agenda?vista=${vista}&fecha=${fechaSiguiente}&salaId=${salaId}&magistradoId=${magistradoId}'/>"
          aria-label="Rango siguiente">&rarr;</a>
     </div>
 
     <div class="col-lg-3 col-md-6">
       <div class="btn-group w-100" role="group" aria-label="Vista de la agenda">
         <a class="btn btn-sm ${vista eq 'semanal' ? 'btn-primary' : 'btn-sij-secundario'}"
-           href="<c:url value='/segunda/agenda?vista=semanal&fecha=${fecha}'/>">Semanal</a>
+           href="<c:url value='/segunda/agenda?vista=semanal&fecha=${fecha}&salaId=${salaId}&magistradoId=${magistradoId}'/>">Semanal</a>
         <a class="btn btn-sm ${vista eq 'mensual' ? 'btn-primary' : 'btn-sij-secundario'}"
-           href="<c:url value='/segunda/agenda?vista=mensual&fecha=${fecha}'/>">Mensual</a>
+           href="<c:url value='/segunda/agenda?vista=mensual&fecha=${fecha}&salaId=${salaId}&magistradoId=${magistradoId}'/>">Mensual</a>
       </div>
     </div>
 
@@ -112,11 +112,10 @@
   </n:tarjeta>
 
   <div class="sij-texto-chico mt-3">
-    &#9432; La agenda es de solo consulta. Para registrar o cancelar una ponencia,
-    abra el detalle de la toca correspondiente.
+    &#9432; La agenda es de solo consulta. Para registrar una ponencia,
+    abra el detalle de la toca correspondiente. La cancelación de ponencias no está disponible con el esquema actual.
   </div>
   
         </div>
     </jsp:body>
 </t:layout>
-

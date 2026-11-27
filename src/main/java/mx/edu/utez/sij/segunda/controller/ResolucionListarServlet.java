@@ -25,6 +25,10 @@ public class ResolucionListarServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         UsuarioSesion usuario = Segunda.usuarioActual(request);
+        if (!SegundaPermisos.esUsuarioSegunda(usuario)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
 
         String q = Parametros.texto(request, "q");
         Long salaId = Parametros.numero(request, "salaId");
@@ -48,4 +52,3 @@ public class ResolucionListarServlet extends HttpServlet {
         Vistas.mostrar(request, response, "segunda/resoluciones/lista");
     }
 }
-

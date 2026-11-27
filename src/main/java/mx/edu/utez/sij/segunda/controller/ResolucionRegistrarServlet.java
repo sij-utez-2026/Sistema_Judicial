@@ -59,8 +59,8 @@ public class ResolucionRegistrarServlet extends HttpServlet {
             try {
                 Resolucion resolucion = resolucionService.registrar(toca.get().getId(), form);
                 UsuarioSesion usuario = Segunda.usuarioActual(request);
-                Segunda.bitacoraDao().registrar("SEGUNDA", "resolucion_Seg", resolucion.getId(),
-                        "Resolución registrada", usuario.getId(),
+                Segunda.registrarBitacora(request, usuario, "resolucion_Seg", resolucion.getId(),
+                        "Resolución registrada",
                         "Toca " + toca.get().getFolioToca() + " · sentido " + resolucion.getSentido().getEtiqueta(), "green");
                 FlashMessage.exito(request, "Resolución registrada",
                         "Sentido: " + resolucion.getSentido().getEtiqueta());
