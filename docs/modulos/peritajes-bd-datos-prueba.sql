@@ -1,7 +1,8 @@
 -- ==========================================================
--- Datos de prueba del módulo de Peritajes — ADAPTADO A LA VERSIÓN 4 de la base
--- (sistema_judicial_v4.sql). Se puede correr varias veces: lo que ya existe se salta
--- (INSERT IGNORE sobre llaves únicas o NOT EXISTS).
+-- Datos de prueba del módulo de Peritajes — VERSIÓN 6 de la base
+-- Se corre DESPUÉS de crear la base con docs/sistema-judicial-desde-cero.sql (o con
+-- docs/modulos/peritajes-bd-script-corregido.sql, versión 6).
+-- Se puede correr varias veces: lo que ya existe se salta (INSERT IGNORE sobre llaves únicas o NOT EXISTS).
 -- Se entra en http://localhost:8080/sij/login (inicio de sesión único del núcleo).
 --
 -- Usuarios (todos con la contraseña de prueba  Peritajes2026  y correos de example.com, dominio reservado para pruebas):
@@ -24,6 +25,13 @@
 --    Los folios PER-PRB-xxxx se conservan (caben en VARCHAR(16)).
 --  * solicitud_perito_Aud.clave_materia y perito_materia_Per.clave_materia guardan el id de la materia.
 --  * SET NAMES al inicio: evita el error 1267 (mezcla de collations) al comparar textos con las tablas.
+--
+-- VERSIONES 5 Y 6: no cambian nada de este archivo. Solo tocaron tablas que aquí no se llenan
+-- (versión 5: triggers AFTER DELETE de Login, tarifa_Cop y solicitud_copia_Cop; versión 6: user_Aud,
+-- mesa_audiencia_Aud, audiencia_Aud y participante_audiencia_Aud).
+--  * user_Per.carga_trabajo (versión 3.1) empieza en 0 para todos: aquí no se crean peritajes. Se llena
+--    sola cuando el módulo asigna las solicitudes (PeritajeDao.actualizarCarga).
+--  * Al insertar en user_Ofc y user_Per, el trigger AFTER INSERT copia correo y contraseña a Login.
 -- [Confirmar con Oficialía] si su script de datos ya crea estas materias, distrito o juzgados con otros nombres.
 -- ==========================================================
 USE sistema_judicial;
