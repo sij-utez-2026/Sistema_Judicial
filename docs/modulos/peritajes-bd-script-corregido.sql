@@ -1,5 +1,5 @@
 -- ==========================================================
--- Base de datos integrada del sistema judicial — VERSIÓN 5
+-- Base de datos integrada del sistema judicial — VERSIÓN 6
 -- Módulos: Oficialía de Partes (Ofc), Audiencias (Aud), Peritajes (Per),
 --          Segunda Instancia (Seg) y Copias Certificadas (Cop)
 -- Motor: MySQL 8.0.16 o superior (requiere soporte de CHECK). Probado en MySQL 8.0.46.
@@ -831,3 +831,63 @@ ALTER TABLE solicitud_copia_Cop
 -- ---------- Revisión ----------
 -- DESCRIBE solicitud_copia_Cop;
 -- SELECT * FROM tarifa_Cop;
+
+-- ==========================================================
+-- Audiencias (Aud): campos nuevos en user_Aud, mesa_audiencia_Aud, audiencia_Aud
+-- y participante_audiencia_Aud.
+-- Base: sistema_judicial VERSIÓN 4. Aplicado en la base de Aiven el 26/11/2026.
+--
+-- Cambio respecto a lo que se pidió:
+--  * user_Aud.clave_materia es INT, no VARCHAR(10). En la versión 4 materia_Ofc tiene como llave
+--    id_materia INT, y una FK de VARCHAR a INT da error 3780. Es la misma regla de la versión 4 para
+--    mesa_audiencia_Aud.clave_materia y solicitud_perito_Aud.clave_materia: el nombre se conserva,
+--    pero guarda el id numérico de la materia.
+--
+-- Notas:
+--  * Los valores nuevos de los ENUM se agregan AL FINAL, así los existentes no cambian.
+--  * audiencia_Aud.id_abogado_audiencia es NOT NULL: este ALTER solo funciona si audiencia_Aud está
+--    VACÍA (lo estaba al aplicarlo). Con datos, MySQL pondría 0 y la FK fallaría.
+--  * Cada ALTER es atómico: si uno falla, no se aplica nada de ese ALTER.
+--  * Este archivo se corre UNA sola vez (los ALTER ... ADD fallan si las columnas ya existen).
+-- ==========================================================
+
+USE sistema_judicial;
+
+-- ---------- user_Aud ----------
+ALTER TABLE user_Aud
+    ADD telefono      VARCHAR(10) NULL,
+    ADD clave_materia INT         NULL,     -- id de materia_Ofc (VERSIÓN 4)
+    ADD CONSTRAINT fk_user_Aud_clave_materia
+        FOREIGN KEY (clave_materia) REFERENCES materia_Ofc(id_materia);
+
+-- ---------- mesa_audiencia_Aud ----------
+ALTER TABLE mesa_audiencia_Aud
+    ADD estado ENUM('ACTIVO','INACTIVO') NOT NULL DEFAULT 'ACTIVO';
+
+-- ---------- audiencia_Aud ----------
+ALTER TABLE audiencia_Aud
+    ADD id_abogado_audiencia   INT      NOT NULL,   -- abogado que atiende la audiencia
+    ADD fecha_hora_inicio_real DATETIME NULL,       -- momento real de inicio
+    ADD fecha_hora_fin_real    DATETIME NULL,       -- momento real de conclusión
+    ADD acta_audiencia         LONGTEXT NULL,       -- contenido del acta redactada
+    ADD motivo_reprogramacion  TEXT     NULL,       -- motivo del cambio de fecha
+    ADD id_audiencia_anterior  INT      NULL,       -- audiencia que se reprogramó
+    MODIFY estado_audiencia ENUM('PROGRAMADA','SUSPENDIDA_POR_INASISTENCIA','CELEBRADA','REPROGRAMADA',
+                                 'EN_PROCESO') NOT NULL DEFAULT 'PROGRAMADA',
+    ADD CONSTRAINT fk_audiencia_Aud_id_abogado_audiencia
+        FOREIGN KEY (id_abogado_audiencia) REFERENCES user_Aud(id_usuario),
+    ADD CONSTRAINT fk_audiencia_Aud_id_audiencia_anterior
+        FOREIGN KEY (id_audiencia_anterior) REFERENCES audiencia_Aud(id_audiencia);
+
+-- ---------- participante_audiencia_Aud ----------
+ALTER TABLE participante_audiencia_Aud
+    ADD motivo_ausencia VARCHAR(500) NULL,                  -- motivo de la inasistencia
+    ADD es_obligatorio  BOOLEAN      NOT NULL DEFAULT TRUE, -- su presencia es indispensable
+    MODIFY rol_participante ENUM('DEMANDANTE','DEMANDADO','REP_LEGAL','PERITO',
+                                 'TESTIGO','OTRO') NOT NULL;
+
+-- ---------- Revisión ----------
+-- DESCRIBE user_Aud;
+-- DESCRIBE mesa_audiencia_Aud;
+-- DESCRIBE audiencia_Aud;
+-- DESCRIBE participante_audiencia_Aud;
